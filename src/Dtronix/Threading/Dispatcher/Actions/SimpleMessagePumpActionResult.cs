@@ -1,24 +1,19 @@
 ﻿namespace Dtronix.Threading.Dispatcher.Actions;
 
-public class SimpleMessagePumpActionResult<TResult> : MessagePumpActionResult<TResult>
+public class SimpleMessagePumpBlockingResult<TResult> : MessagePumpActionResult<TResult>
 {
-    private readonly Func<CancellationToken, TResult> _cancellableFunction;
-    private readonly Func<TResult> _function;
+    private readonly Func<CancellationToken, TResult> _func;
 
-    public SimpleMessagePumpActionResult(Func<TResult> function)
+    public SimpleMessagePumpBlockingResult(
+        Func<CancellationToken, TResult> func,
+        CancellationToken cancellationToken)
+        : base(cancellationToken)
     {
-        _function = function ?? throw new ArgumentNullException(nameof(function));
+        _func = func;
     }
 
-    public SimpleMessagePumpActionResult(Func<CancellationToken, TResult> cancellableFunction)
-    {
-        _cancellableFunction = cancellableFunction;
-    }
     protected override TResult OnExecute(CancellationToken cancellationToken)
     {
-        if (_function != null)
-            return _function.Invoke();
-
-        return _cancellableFunction.Invoke(cancellationToken);
+        return _func.Invoke(cancellationToken);
     }
 }

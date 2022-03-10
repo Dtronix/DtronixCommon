@@ -148,55 +148,33 @@ public class ThreadDispatcher : IDisposable
         }
             
     }
-    public Task QueueForCompletion(
+    public Task Queue(
         Action action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
-        CancellationToken cancellationToken = default)
+        DispatcherPriority priority = DispatcherPriority.Normal)
     {
-        return QueueForCompletion(
-            new SimpleMessagePumpAction(action),
-            priority,
-            cancellationToken);
+        return Queue(new SimpleMessagePumpAction(action), priority);
     }
 
-    public Task QueueForCompletion(
+    public Task Queue(
         Action<CancellationToken> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
         CancellationToken cancellationToken = default)
     {
-        return QueueForCompletion(
-            new SimpleMessagePumpAction(action),
-            priority,
-            cancellationToken);
+        return Queue(
+            new SimpleMessagePumpActionCancellable(action, cancellationToken), priority);
     }
-
-    public Task QueueForCompletion(
+    public Task Queue(
         MessagePumpAction action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
-        CancellationToken cancellationToken = default)
+        DispatcherPriority priority = DispatcherPriority.Normal)
     {
         if (!IsRunning)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        action.CancellationToken = cancellationToken;
-        GetQueue(priority).Add(action, cancellationToken);
+        GetQueue(priority).Add(action, action.CancellationToken);
         return action.Result;
     }
 
-    public Task QueueForCompletion(
-        Func<Task> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
-        CancellationToken cancellationToken = default)
-    {
-        if (!IsRunning)
-            throw new InvalidOperationException("ThreadDispatcher is not running");
-
-        var messageTask = new SimpleMessagePumpTask(action);
-        GetQueue(priority).Add(messageTask, cancellationToken);
-        return messageTask.Result;
-    }
-
-    public Task QueueForCompletion(
+    public Task QueueAsync(
         Func<CancellationToken, Task> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
         CancellationToken cancellationToken = default)
@@ -204,44 +182,36 @@ public class ThreadDispatcher : IDisposable
         if (!IsRunning)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        var messageTask = new SimpleMessagePumpTask(action);
+        var messageTask = new SimpleMessagePumpTask(action, cancellationToken);
         GetQueue(priority).Add(messageTask, cancellationToken);
         return messageTask.Result;
     }
-
-    public Task<TResult> QueueWithResult<TResult>(
-        Func<TResult> action,
+    public Task<TResult> QueueResultAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> task,
         DispatcherPriority priority = DispatcherPriority.Normal,
         CancellationToken cancellationToken = default)
     {
-
-        return QueueWithResult(
-            new SimpleMessagePumpActionResult<TResult>(action),
-            priority,
-            cancellationToken);
+        return QueueResult(
+            new SimpleMessagePumpTaskResult<TResult>(task, cancellationToken), priority);
     }
 
-    public Task<TResult> QueueWithResult<TResult>(
+    public Task<TResult> QueueResult<TResult>(
         Func<CancellationToken, TResult> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
         CancellationToken cancellationToken = default)
     {
-        return QueueWithResult(
-            new SimpleMessagePumpActionResult<TResult>(action),
-            priority,
-            cancellationToken);
+        return QueueResult(
+            new SimpleMessagePumpBlockingResult<TResult>(action, cancellationToken), priority);
     }
 
-    public Task<TResult> QueueWithResult<TResult>(
+    public Task<TResult> QueueResult<TResult>(
         MessagePumpActionResult<TResult> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
-        CancellationToken cancellationToken = default)
+        DispatcherPriority priority = DispatcherPriority.Normal)
     {
         if (!IsRunning)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        action.CancellationToken = cancellationToken;
-        GetQueue(priority).Add(action, cancellationToken);
+        GetQueue(priority).Add(action, action.CancellationToken);
         return action.Result;
     }
 

@@ -2,27 +2,16 @@
 
 public class SimpleMessagePumpAction : MessagePumpAction
 {
-    private readonly Action<CancellationToken> _cancellableAction;
     private readonly Action _action;
 
-    public SimpleMessagePumpAction(Action action)
+    public SimpleMessagePumpAction(Action action) 
+        : base(default)
     {
-        _action = action ?? throw new ArgumentNullException(nameof(action));
-    }
-
-    public SimpleMessagePumpAction(Action<CancellationToken> cancellableAction)
-    {
-        _cancellableAction = cancellableAction;
+        _action = action;
     }
 
     protected override void OnExecute(CancellationToken cancellationToken)
     {
-        if (_action != null)
-        {
-            _action.Invoke();
-            return;
-        }
-
-        _cancellableAction?.Invoke(cancellationToken);
+        _action.Invoke();
     }
 }

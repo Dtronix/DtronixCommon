@@ -13,4 +13,9 @@ public abstract class MessagePumpActionVoid : MessagePumpActionBase
     internal override void SetCanceled()
     {
     }
+
+    protected MessagePumpActionVoid() 
+        : base(default)
+    {
+    }
 }

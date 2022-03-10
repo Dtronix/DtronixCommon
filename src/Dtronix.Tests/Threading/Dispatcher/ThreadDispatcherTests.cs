@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Dtronix.Tests.Utilities;
 using Dtronix.Threading.Dispatcher;
 using NUnit.Framework;
 
@@ -15,14 +16,14 @@ public class ThreadDispatcherTests
         dispatcher.Start();
         bool complete = false;
         var tasks = new Task[2];
-        tasks[0] = dispatcher.QueueForCompletion(async () =>
+        tasks[0] = dispatcher.QueueAsync(async _ =>
         {
             await Task.Delay(100);
             complete = true;
         });
 
-        tasks[1] = dispatcher.QueueForCompletion(() => { Assert.IsTrue(complete); });
-        await Task.WhenAll(tasks);
+        tasks[1] = dispatcher.Queue(() => { Assert.IsTrue(complete); });
+        await Task.WhenAll(tasks).TestTimeout();
     }
 
     [Test]
@@ -35,13 +36,13 @@ public class ThreadDispatcherTests
         for (int i = 0; i < tasks.Length; i++)
         {
             var i1 = i;
-            tasks[i] = dispatcher.QueueForCompletion(() =>
+            tasks[i] = dispatcher.Queue(() =>
             {
                 Assert.AreEqual(i1, counter++, "Executed tasks out of order.");
             });
         }
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).TestTimeout();
     }
 
     [Test]
@@ -53,21 +54,21 @@ public class ThreadDispatcherTests
         var task1Started = false;
         var task1Completed = false;
 
-        var task1 = dispatcher.QueueForCompletion(async () =>
+        _ = dispatcher.QueueAsync(async _ =>
         {
             task1Started = true;
-            await Task.Delay(400);
+            await Task.Delay(2000);
             task1Completed = true;
         });
-        await Task.Delay(250);
-        var task2 = dispatcher.QueueForCompletion(() =>
+        await Task.Delay(100);
+        var task2 = dispatcher.QueueAsync( _ =>
         {
             Assert.IsTrue(task1Started);
             Assert.IsFalse(task1Completed);
             return Task.CompletedTask;
         });
 
-        await task2;
+        await task2.TestTimeout();
     }
 
     [Test]
@@ -78,11 +79,10 @@ public class ThreadDispatcherTests
         dispatcher.Start();
         var threads = dispatcher.Threads;
 
-
         foreach (var dispatcherThread in threads)
             Assert.IsTrue(dispatcherThread.ThreadState.HasFlag(ThreadState.Background));
 
-        dispatcher.Stop();
+        Assert.IsTrue(dispatcher.Stop());
 
         foreach (var dispatcherThread in threads)
             Assert.IsFalse(dispatcherThread.IsAlive);
@@ -100,7 +100,7 @@ public class ThreadDispatcherTests
         dispatcher.Stop();
 
         dispatcher.Start();
-        await dispatcher.QueueForCompletion(() => { Assert.Pass(); });
+        await dispatcher.Queue(() => { Assert.Pass(); }).TestTimeout();
     }
 
     [Test]
@@ -109,7 +109,7 @@ public class ThreadDispatcherTests
         var dispatcher = new ThreadDispatcher(1);
         Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await dispatcher.QueueForCompletion(() => { Assert.Pass(); });
+            await dispatcher.Queue(() => { Assert.Pass(); }).TestTimeout();
         });
 
     }

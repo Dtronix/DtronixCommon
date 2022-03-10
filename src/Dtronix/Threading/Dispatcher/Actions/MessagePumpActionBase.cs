@@ -2,10 +2,14 @@
 
 public abstract class MessagePumpActionBase
 {
-    internal CancellationToken CancellationToken;
+    internal readonly CancellationToken CancellationToken;
     internal abstract void SetFailed(Exception e);
     internal abstract void SetCanceled();
 
+    protected MessagePumpActionBase(CancellationToken cancellationToken)
+    {
+        CancellationToken = cancellationToken;
+    }
     internal void ExecuteCore()
     {
         Execute(CancellationToken);

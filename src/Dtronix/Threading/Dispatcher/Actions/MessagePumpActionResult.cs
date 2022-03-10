@@ -6,6 +6,10 @@ public abstract class MessagePumpActionResult<TResult> : MessagePumpActionBase
 
     public Task<TResult> Result => _completionSource.Task;
 
+    protected MessagePumpActionResult(CancellationToken cancellationToken) : base(cancellationToken)
+    {
+    }
+
     internal override void SetFailed(Exception e)
     {
         _completionSource.TrySetException(e);
@@ -22,4 +26,5 @@ public abstract class MessagePumpActionResult<TResult> : MessagePumpActionBase
     }
 
     protected abstract TResult OnExecute(CancellationToken cancellationToken);
+
 }
