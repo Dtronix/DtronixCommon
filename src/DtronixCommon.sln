@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dtronix", "Dtronix\Dtronix.csproj", "{1A05BAD5-8169-48C6-AFFC-490DDB4E8138}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Dtronix.Tests", "Dtronix.Tests\Dtronix.Tests.csproj", "{6CE57F3B-5850-41AD-8D13-1EE8B838DBA8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1A05BAD5-8169-48C6-AFFC-490DDB4E8138}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A05BAD5-8169-48C6-AFFC-490DDB4E8138}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A05BAD5-8169-48C6-AFFC-490DDB4E8138}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A05BAD5-8169-48C6-AFFC-490DDB4E8138}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6CE57F3B-5850-41AD-8D13-1EE8B838DBA8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6CE57F3B-5850-41AD-8D13-1EE8B838DBA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6CE57F3B-5850-41AD-8D13-1EE8B838DBA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6CE57F3B-5850-41AD-8D13-1EE8B838DBA8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {ECF09F8C-2B90-4AFB-B488-D95E7A815143}
+	EndGlobalSection
+EndGlobal
