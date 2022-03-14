@@ -30,13 +30,13 @@ jobs:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: Build
-      run: dotnet build src/Dtronix -c Release
+      run: dotnet build src/DtronixCommon -c Release
       
     - name: Pack
-      run: dotnet pack src/Dtronix -c Release -o ./artifacts
+      run: dotnet pack src/DtronixCommon -c Release -o ./artifacts
       
     - name: Unit tests
-      run: dotnet test src/Dtronix.Tests -c Release
+      run: dotnet test src/DtronixCommon.Tests -c Release
       
     - name: Export artifacts
       uses: actions/upload-artifact@v2
