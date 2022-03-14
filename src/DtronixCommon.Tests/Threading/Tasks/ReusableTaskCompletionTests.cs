@@ -44,7 +44,7 @@ public class ReusableTaskCompletionTests
         // Spin while the task resets.
         await Task.Delay(1);
         Assert.ThrowsAsync<OperationCanceledException>(async () => await manualReset.Awaiter);
-        
+        await Task.Delay(10);
         manualReset.ToTask().AssertTimesOut(100);
     }
 
@@ -92,7 +92,7 @@ public class ReusableTaskCompletionTests
         // Spin while the task resets.
         await Task.Delay(1);
         Assert.ThrowsAsync<OperationCanceledException>(async () => await manualReset.Awaiter);
-
+        await Task.Delay(10);
         manualReset.ToTask().AssertTimesOut(100);
     }
 
