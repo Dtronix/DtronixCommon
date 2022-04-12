@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net5.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>0.1.1.2</Version>
+		<Version>0.1.1.3</Version>
 		<Nullable>enable</Nullable>
 		<LangVersion>10</LangVersion>
 		<Company>Dtronix</Company>
@@ -19,6 +19,7 @@
 		<Description>DtronixCommon is a support library which houses collections of common or performance classes &amp; utility methods.</Description>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All"/>
