@@ -33,7 +33,7 @@ jobs:
       run: dotnet build src/DtronixCommon -c Release
       
     - name: Pack
-      run: dotnet pack src/DtronixCommon -c Release -o ./artifacts /p:ContinuousIntegrationBuild=true
+      run: dotnet pack src/DtronixCommon -c Release -o ./artifacts
       
     - name: Unit tests
       run: dotnet test src/DtronixCommon.Tests -c Release
