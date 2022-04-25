@@ -6,9 +6,9 @@ namespace DtronixCommon.Collections;
 /// Thread safe collection which groups items by their base type.  Will reject duplicates.
 /// </summary>
 /// <typeparam name="TBase">Base class which items will inherit from.</typeparam>
-internal class TypeGroupedHashCollection<TBase> : ICollection<TBase>
+public class TypeGroupedHashCollection<TBase> : ICollection<TBase>
 {
-    internal class FinalizedGroup
+    public class FinalizedGroup
     {
         public Type Type;
         public TBase[] Items;
