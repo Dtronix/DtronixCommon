@@ -3,7 +3,7 @@
 /// <summary>
 /// Class to aid in the culling of events within a specified amount of time with a maximum delay.
 /// </summary>
-internal class DelayedAction : IDisposable
+public class DelayedAction : IDisposable
 {
     private readonly int _cullingInterval;
     private readonly int _maxCullingDelay;

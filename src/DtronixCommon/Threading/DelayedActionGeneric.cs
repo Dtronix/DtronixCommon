@@ -4,7 +4,7 @@
 /// Class to aid in the culling of events within a specified amount of time with a maximum delay.
 /// </summary>
 /// <typeparam name="TArgs"></typeparam>
-internal class DelayedAction<TArgs> : DelayedAction
+public class DelayedAction<TArgs> : DelayedAction
     where TArgs : struct
 {
     private TArgs _arguments;
