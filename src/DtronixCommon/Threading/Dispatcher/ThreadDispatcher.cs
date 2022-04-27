@@ -23,6 +23,12 @@ public class ThreadDispatcher : IDisposable
 
     public bool IsRunning => Threads != null;
 
+    /// <summary>
+    /// Returns true if there are any items in the queue to execute.  False if the queue is empty.
+    /// </summary>
+    public bool IsInvokePending => NormalPriorityQueue?.Count > 0 
+                                 || HighPriorityQueue?.Count > 0 
+                                 || LowPriorityQueue?.Count > 0;
     public ThreadDispatcher(int threadCount)
     {
         _threadCount = threadCount;
@@ -41,7 +47,10 @@ public class ThreadDispatcher : IDisposable
         {
             while (true)
             {
-                var queueId = BlockingCollection<MessagePumpActionBase>.TakeFromAny(queueList!, out var action);
+                var queueId = BlockingCollection<MessagePumpActionBase>.TakeFromAny(
+                    queueList!,
+                    out var action,
+                    _cancellationTokenSource!.Token);
 
                 // Check if this is a command.
                 if (queueId == 0)
@@ -57,6 +66,7 @@ public class ThreadDispatcher : IDisposable
 
                 try
                 {
+                    // Hot path for early canceled actions.
                     if (action.CancellationToken.IsCancellationRequested)
                     {
                         action.SetCanceled();

@@ -79,4 +79,34 @@ public class QueueTests
         }, default)).TestTimeout();
 
     }
+
+    [Test]
+    public async Task MessagePump_IsInvokePending_FalseOnEmptyQueue()
+    {
+        Assert.IsFalse(_dispatcher.IsInvokePending);
+        await _dispatcher.Queue(new SimpleMessagePumpAction(() =>
+        {
+            Thread.Sleep(100);
+        })).TestTimeout();
+
+        Assert.IsFalse(_dispatcher.IsInvokePending);
+    }
+
+    [Test]
+    public void MessagePump_IsInvokePending_TrueOnItemInQueue()
+    {
+        Assert.IsFalse(_dispatcher.IsInvokePending);
+        _ = _dispatcher.Queue(new SimpleMessagePumpAction(() =>
+        {
+            Thread.Sleep(1000);
+        })).TestTimeout();
+
+        Assert.IsFalse(_dispatcher.IsInvokePending);
+
+        _ = _dispatcher.Queue(new SimpleMessagePumpAction(() =>
+        {
+        })).TestTimeout();
+
+        Assert.IsTrue(_dispatcher.IsInvokePending);
+    }
 }

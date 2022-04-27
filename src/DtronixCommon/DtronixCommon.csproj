@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net5.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>0.2.1.0</Version>
+		<Version>0.2.2.0</Version>
 		<Nullable>enable</Nullable>
 		<LangVersion>10</LangVersion>
 		<Company>Dtronix</Company>
@@ -13,7 +13,7 @@
 		<RepositoryUrl>https://github.com/Dtronix/DtronixCommon</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<PackageTags>common lib library threading tpl tools</PackageTags>
+		<PackageTags>common lib library threading tpl tools collections</PackageTags>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageIconUrl />
 		<Description>DtronixCommon is a support library which houses collections of common or performance classes &amp; utility methods.</Description>
