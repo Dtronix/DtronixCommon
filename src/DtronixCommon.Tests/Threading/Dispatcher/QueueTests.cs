@@ -93,13 +93,16 @@ public class QueueTests
     }
 
     [Test]
-    public void MessagePump_IsInvokePending_TrueOnItemInQueue()
+    public async Task MessagePump_IsInvokePending_TrueOnItemInQueue()
     {
         Assert.IsFalse(_dispatcher.IsInvokePending);
         _ = _dispatcher.Queue(new SimpleMessagePumpAction(() =>
         {
             Thread.Sleep(1000);
         })).TestTimeout();
+
+        // Delay added to allow the item to queue and start executing.
+        await Task.Delay(100);
 
         Assert.IsFalse(_dispatcher.IsInvokePending);
 

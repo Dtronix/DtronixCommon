@@ -88,7 +88,7 @@ public class DelayedActionTests
 
 
         Assert.IsTrue(await WaitForCompletion(1000));
-        Assert.GreaterOrEqual(sw.ElapsedMilliseconds, 90);
+        Assert.GreaterOrEqual(sw.ElapsedMilliseconds, 80);
     }
 
     [Test]
