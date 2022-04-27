@@ -158,6 +158,37 @@ public class ThreadDispatcher : IDisposable
         }
             
     }
+
+    /// <summary>
+    /// Queues the action and executes when the next execution slot is available.
+    /// </summary>
+    /// <param name="action">Cancellable Action to execute</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    public void QueueFireForget(
+        Action<CancellationToken> action,
+        DispatcherPriority priority = DispatcherPriority.Normal)
+    {
+        QueueFireForget(new MessagePumpActionFireForget(action));
+    }
+
+    /// <summary>
+    /// Queues the MessagePumpAction and executes when the next execution slot is available.
+    /// </summary>
+    /// <param name="action">Action to execute</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    public void QueueFireForget(
+        MessagePumpActionBase action,
+        DispatcherPriority priority = DispatcherPriority.Normal)
+    {
+        GetQueue(priority).Add(action);
+    }
+
+    /// <summary>
+    /// Queues an action for execution and returns a task which will complete upon the action's execution completion.
+    /// </summary>
+    /// <param name="action">Action to execute.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <returns>Task which will complete upon the action's execution completion.</returns>
     public Task Queue(
         Action action,
         DispatcherPriority priority = DispatcherPriority.Normal)
@@ -165,6 +196,13 @@ public class ThreadDispatcher : IDisposable
         return Queue(new SimpleMessagePumpAction(action), priority);
     }
 
+    /// <summary>
+    /// Queues a cancellable action for execution and returns a task which will complete upon the action's execution completion.
+    /// </summary>
+    /// <param name="action">Cancellable Action to execute.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the action with.</param>
+    /// <returns>Task which will complete upon the action's execution completion.</returns>
     public Task Queue(
         Action<CancellationToken> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
@@ -173,6 +211,14 @@ public class ThreadDispatcher : IDisposable
         return Queue(
             new SimpleMessagePumpActionCancellable(action, cancellationToken), priority);
     }
+
+    /// <summary>
+    /// Queues a MessagePumpAction for execution and returns a task which will complete upon the action's execution completion.
+    /// </summary>
+    /// <param name="action">MessagePumpAction to execute.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <returns>Task which will complete upon the action's execution completion.</returns>
+    /// <exception cref="InvalidOperationException">Throws if the ThreadDispatcher is not running.</exception>
     public Task Queue(
         MessagePumpAction action,
         DispatcherPriority priority = DispatcherPriority.Normal)
@@ -184,6 +230,15 @@ public class ThreadDispatcher : IDisposable
         return action.Result;
     }
 
+    /// <summary>
+    /// Queues an cancellable async function for execution and returns a task which will complete
+    /// upon the action's execution completion.
+    /// </summary>
+    /// <param name="action">Cancellable async function to execute.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the action with.</param>
+    /// <returns>Task which will complete upon the action's execution completion.</returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public Task QueueAsync(
         Func<CancellationToken, Task> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
@@ -196,15 +251,34 @@ public class ThreadDispatcher : IDisposable
         GetQueue(priority).Add(messageTask, cancellationToken);
         return messageTask.Result;
     }
+
+    /// <summary>
+    /// Queues an cancellable async function with a return value for execution and
+    /// returns a task which will complete upon the action's execution completion.
+    /// </summary>
+    /// <typeparam name="TResult">Return type of the task.</typeparam>
+    /// <param name="action">Cancellable async function with a return value.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the action with.</param>
+    /// <returns>Returns value of the async function.</returns>
     public Task<TResult> QueueResultAsync<TResult>(
-        Func<CancellationToken, Task<TResult>> task,
+        Func<CancellationToken, Task<TResult>> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
         CancellationToken cancellationToken = default)
     {
         return QueueResult(
-            new SimpleMessagePumpTaskResult<TResult>(task, cancellationToken), priority);
+            new SimpleMessagePumpTaskResult<TResult>(action, cancellationToken), priority);
     }
 
+    /// <summary>
+    /// Queues an cancellable function with a return value for execution and
+    /// returns the task's result upon the action's execution completion.
+    /// </summary>
+    /// <typeparam name="TResult">Return type of the function.</typeparam>
+    /// <param name="action">Cancellable function with a return value.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the action with.</param>
+    /// <returns>Returns value of the function.</returns>
     public Task<TResult> QueueResult<TResult>(
         Func<CancellationToken, TResult> action,
         DispatcherPriority priority = DispatcherPriority.Normal,
@@ -214,6 +288,15 @@ public class ThreadDispatcher : IDisposable
             new SimpleMessagePumpBlockingResult<TResult>(action, cancellationToken), priority);
     }
 
+    /// <summary>
+    /// Queues an cancellable MessagePumpActionResult with a return value for execution and
+    /// returns the result upon the action's execution completion.
+    /// </summary>
+    /// <typeparam name="TResult">Return type of the function.</typeparam>
+    /// <param name="action">Cancellable MessagePumpActionResult with a return value.</param>
+    /// <param name="priority">Priority to execute action with.</param>
+    /// <returns>Returns value of the function.</returns>
+    /// <exception cref="InvalidOperationException"></exception>
     public Task<TResult> QueueResult<TResult>(
         MessagePumpActionResult<TResult> action,
         DispatcherPriority priority = DispatcherPriority.Normal)
