@@ -2,53 +2,94 @@
 using DtronixCommon.Threading.Dispatcher.Actions;
 
 namespace DtronixCommon.Threading.Dispatcher;
-
+/// <summary>
+/// Class which handles a specified number of threads with a specified number of queues.
+/// </summary>
 public class ThreadDispatcher : IDisposable
 {
-    private readonly int _threadCount;
-
+    /// <summary>
+    /// Action to stop the message pump loop from running.
+    /// </summary>
     private class StopLoop : MessagePumpActionVoid
     {
     }
 
     private bool _isDisposed;
+
+    /// <summary>
+    /// Fired when an exception occurs on an executed queue item.
+    /// </summary>
     public EventHandler<ThreadDispatcherExceptionEventArgs>? Exception;
 
+    private BlockingCollection<MessagePumpActionBase>[]? _queues;
+
     internal Thread[]? Threads;
-    protected BlockingCollection<MessagePumpActionBase>? InternalPriorityQueue;
-    protected BlockingCollection<MessagePumpActionBase>? HighPriorityQueue;
-    protected BlockingCollection<MessagePumpActionBase>? NormalPriorityQueue;
-    protected BlockingCollection<MessagePumpActionBase>? LowPriorityQueue;
+
     private CancellationTokenSource? _cancellationTokenSource;
 
+    private readonly ThreadDispatcherConfiguration _configs;
+
+    /// <summary>
+    /// True if the thread dispatcher has started.
+    /// </summary>
     public bool IsRunning => Threads != null;
 
     /// <summary>
     /// Returns true if there are any items in the queue to execute.  False if the queue is empty.
     /// </summary>
-    public bool IsInvokePending => NormalPriorityQueue?.Count > 0 
-                                 || HighPriorityQueue?.Count > 0 
-                                 || LowPriorityQueue?.Count > 0;
-    public ThreadDispatcher(int threadCount)
+    public bool IsInvokePending
     {
-        _threadCount = threadCount;
+        get
+        {
+            if (_queues == null)
+                return false;
+            
+            // Lot path for single queue thread dispatchers.
+            if (_queues.Length == 2)
+                return _queues[1].Count > 0;
+
+            // Ignore the internal queue.
+            for (int i = 1; i < _queues.Length; i++)
+            {
+                if (_queues[i].Count > 0)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+    /// <summary>
+    /// Creates a new dispatcher with the specified thread count and default configurations 
+    /// </summary>
+    /// <param name="threadCount">Number of threads to spawn.</param>
+    public ThreadDispatcher(int threadCount)
+        : this(new ThreadDispatcherConfiguration
+        {
+            ThreadCount = threadCount
+        })
+
+    {
+
+    }
+
+    /// <summary>
+    /// Creates a new dispatcher with the specified configurations.
+    /// </summary>
+    /// <param name="configs">Configurations for the dispatcher.</param>
+    /// <exception cref="ArgumentNullException">Configs parameter can't be null.</exception>
+    public ThreadDispatcher(ThreadDispatcherConfiguration configs)
+    {
+        _configs = configs ?? throw new ArgumentNullException(nameof(configs));
     }
 
     private void Pump()
     {
-        var queueList = new[]
-        {
-            InternalPriorityQueue,
-            HighPriorityQueue,
-            NormalPriorityQueue,
-            LowPriorityQueue
-        };
         try
         {
-            while (true)
+            while (_queues != null)
             {
                 var queueId = BlockingCollection<MessagePumpActionBase>.TakeFromAny(
-                    queueList!,
+                    _queues!,
                     out var action,
                     _cancellationTokenSource!.Token);
 
@@ -103,19 +144,23 @@ public class ThreadDispatcher : IDisposable
     /// <exception cref="InvalidOperationException"></exception>
     public bool Stop(int timeout = 1000)
     {
-        if (Threads == null)
+        if (Threads == null || _queues == null)
             throw new InvalidOperationException("Message pump is not running.");
 
         // Send enough StopLoop commands to end all the threads.
-        for (int i = 0; i < _threadCount; i++)
-            InternalPriorityQueue?.TryAdd(new StopLoop());
-            
+        for (int i = 0; i < _configs.ThreadCount; i++)
+            _queues[0].TryAdd(new StopLoop());
+
 
         _cancellationTokenSource?.Cancel();
-        InternalPriorityQueue?.CompleteAdding();
-        HighPriorityQueue?.CompleteAdding();
-        NormalPriorityQueue?.CompleteAdding();
-        LowPriorityQueue?.CompleteAdding();
+
+        foreach (var queue in _queues)
+        {
+            queue.CompleteAdding();
+            queue.Dispose();
+        }
+
+        _queues = null;
 
         var stopSuccessful = true;
         // Join all the threads back to ensure they are complete.
@@ -140,15 +185,22 @@ public class ThreadDispatcher : IDisposable
         if (Threads != null)
             throw new InvalidOperationException("Message pump already running.");
 
-        InternalPriorityQueue = new BlockingCollection<MessagePumpActionBase>();
-        HighPriorityQueue = new BlockingCollection<MessagePumpActionBase>();
-        NormalPriorityQueue = new BlockingCollection<MessagePumpActionBase>();
-        LowPriorityQueue = new BlockingCollection<MessagePumpActionBase>();
+        _queues = new BlockingCollection<MessagePumpActionBase>[_configs.QueueCount + 1];
+
+        // Setup the internal queue to be twice the size of the thread pool.
+        _queues[0] = new BlockingCollection<MessagePumpActionBase>(_configs.ThreadCount * 2);
+        for (int i = 1; i < _queues.Length; i++)
+        {
+            // If the bound capacity is less than zero, it has no upper bound.
+            _queues[i] = _configs.BoundCapacity < 0
+                ? new BlockingCollection<MessagePumpActionBase>()
+                : new BlockingCollection<MessagePumpActionBase>(_configs.BoundCapacity);
+        }
 
         _cancellationTokenSource = new CancellationTokenSource();
 
-        Threads = new Thread[_threadCount];
-        for (int i = 0; i < _threadCount; i++)
+        Threads = new Thread[_configs.ThreadCount];
+        for (int i = 0; i < Threads.Length; i++)
         {
             Threads[i] = new Thread(Pump)
             {
@@ -166,7 +218,7 @@ public class ThreadDispatcher : IDisposable
     /// <param name="priority">Priority to execute action with.</param>
     public void QueueFireForget(
         Action<CancellationToken> action,
-        DispatcherPriority priority = DispatcherPriority.Normal)
+        int priority = 0)
     {
         QueueFireForget(new MessagePumpActionFireForget(action));
     }
@@ -178,9 +230,12 @@ public class ThreadDispatcher : IDisposable
     /// <param name="priority">Priority to execute action with.</param>
     public void QueueFireForget(
         MessagePumpActionBase action,
-        DispatcherPriority priority = DispatcherPriority.Normal)
+        int priority = 0)
     {
-        GetQueue(priority).Add(action);
+        if (_queues == null)
+            throw new InvalidOperationException("ThreadDispatcher is not running");
+
+        _queues[priority + 1].Add(action);
     }
 
     /// <summary>
@@ -191,7 +246,7 @@ public class ThreadDispatcher : IDisposable
     /// <returns>Task which will complete upon the action's execution completion.</returns>
     public Task Queue(
         Action action,
-        DispatcherPriority priority = DispatcherPriority.Normal)
+        int priority = 0)
     {
         return Queue(new SimpleMessagePumpAction(action), priority);
     }
@@ -205,7 +260,7 @@ public class ThreadDispatcher : IDisposable
     /// <returns>Task which will complete upon the action's execution completion.</returns>
     public Task Queue(
         Action<CancellationToken> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
+        int priority = 0,
         CancellationToken cancellationToken = default)
     {
         return Queue(
@@ -221,12 +276,12 @@ public class ThreadDispatcher : IDisposable
     /// <exception cref="InvalidOperationException">Throws if the ThreadDispatcher is not running.</exception>
     public Task Queue(
         MessagePumpAction action,
-        DispatcherPriority priority = DispatcherPriority.Normal)
+        int priority = 0)
     {
-        if (!IsRunning)
+        if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        GetQueue(priority).Add(action, action.CancellationToken);
+        _queues[priority + 1].Add(action, action.CancellationToken);
         return action.Result;
     }
 
@@ -241,14 +296,14 @@ public class ThreadDispatcher : IDisposable
     /// <exception cref="InvalidOperationException"></exception>
     public Task QueueAsync(
         Func<CancellationToken, Task> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
+        int priority = 0,
         CancellationToken cancellationToken = default)
     {
-        if (!IsRunning)
+        if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
         var messageTask = new SimpleMessagePumpTask(action, cancellationToken);
-        GetQueue(priority).Add(messageTask, cancellationToken);
+        _queues[priority + 1].Add(messageTask, cancellationToken);
         return messageTask.Result;
     }
 
@@ -263,7 +318,7 @@ public class ThreadDispatcher : IDisposable
     /// <returns>Returns value of the async function.</returns>
     public Task<TResult> QueueResultAsync<TResult>(
         Func<CancellationToken, Task<TResult>> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
+        int priority = 0,
         CancellationToken cancellationToken = default)
     {
         return QueueResult(
@@ -281,7 +336,7 @@ public class ThreadDispatcher : IDisposable
     /// <returns>Returns value of the function.</returns>
     public Task<TResult> QueueResult<TResult>(
         Func<CancellationToken, TResult> action,
-        DispatcherPriority priority = DispatcherPriority.Normal,
+        int priority = 0,
         CancellationToken cancellationToken = default)
     {
         return QueueResult(
@@ -299,26 +354,18 @@ public class ThreadDispatcher : IDisposable
     /// <exception cref="InvalidOperationException"></exception>
     public Task<TResult> QueueResult<TResult>(
         MessagePumpActionResult<TResult> action,
-        DispatcherPriority priority = DispatcherPriority.Normal)
+        int priority = 0)
     {
-        if (!IsRunning)
+        if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        GetQueue(priority).Add(action, action.CancellationToken);
+        _queues[priority + 1].Add(action, action.CancellationToken);
         return action.Result;
     }
 
-    private BlockingCollection<MessagePumpActionBase> GetQueue(DispatcherPriority priority)
-    {
-        return priority switch
-        {
-            DispatcherPriority.Low => LowPriorityQueue,
-            DispatcherPriority.Normal => NormalPriorityQueue,
-            DispatcherPriority.High => HighPriorityQueue,
-            _ => throw new ArgumentOutOfRangeException(nameof(priority), priority, null)
-        } ?? throw new InvalidOperationException();
-    }
-
+    /// <summary>
+    /// Releases resources held by <see cref="ThreadDispatcher"/>.
+    /// </summary>
     public virtual void Dispose()
     {
         if (_isDisposed)
@@ -327,10 +374,6 @@ public class ThreadDispatcher : IDisposable
         _isDisposed = true;
 
         Stop();
-        InternalPriorityQueue?.Dispose();
-        HighPriorityQueue?.Dispose();
-        NormalPriorityQueue?.Dispose();
-        LowPriorityQueue?.Dispose();
         _cancellationTokenSource?.Dispose();
     }
 }

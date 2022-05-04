@@ -48,7 +48,7 @@ public class QueueResultAsyncTests
             await Task.Delay(500, ct);
             return true;
 
-        }, DispatcherPriority.Normal, cts.Token);
+        }, 0, cts.Token);
 
         Assert.ThrowsAsync<OperationCanceledException>(() => task.TestTimeout());
 
