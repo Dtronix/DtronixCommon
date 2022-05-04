@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using DtronixCommon.Tests.Utilities;
@@ -111,5 +112,49 @@ public class QueueTests
         })).TestTimeout();
 
         Assert.IsTrue(_dispatcher.IsInvokePending);
+    }
+
+    [Test]
+    public void AddingWhenFull_TimesOut()
+    {
+        var sw = Stopwatch.StartNew();
+        _dispatcher = new ThreadDispatcher(new ThreadDispatcherConfiguration
+        {
+            BoundCapacity = 1,
+            QueueTryAddTimeout = 200
+        });
+
+        _dispatcher.Start();
+        var fire = () => _dispatcher.QueueFireForget(new SimpleMessagePumpAction(() =>
+            {
+                Thread.Sleep(10000);
+            }));
+
+        Assert.IsTrue(fire());
+        Assert.IsTrue(fire());
+        Assert.IsFalse(fire());
+        Assert.GreaterOrEqual(sw.ElapsedMilliseconds, 190);
+    }
+
+    [Test]
+    public void AddingWhenFull_TimesOutImmediately()
+    {
+        var sw = Stopwatch.StartNew();
+        _dispatcher = new ThreadDispatcher(new ThreadDispatcherConfiguration
+        {
+            BoundCapacity = 1,
+            QueueTryAddTimeout = 0
+        });
+
+        _dispatcher.Start();
+        var fire = () => _dispatcher.QueueFireForget(new SimpleMessagePumpAction(() =>
+        {
+            Thread.Sleep(10000);
+        }));
+
+        Assert.IsTrue(fire());
+        fire();
+        Assert.IsFalse(fire());
+        Assert.LessOrEqual(sw.ElapsedMilliseconds, 100);
     }
 }

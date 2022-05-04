@@ -32,4 +32,10 @@ public class ThreadDispatcherConfiguration
             _queueCount = value;
         }
     }
+
+    /// <summary>
+    /// Sets the time the items are attempting to wait to be added to the queue in milliseconds.
+    /// Set to -1 to infinitely wait.
+    /// </summary>
+    public int QueueTryAddTimeout { get; set; } = 1500;
 }

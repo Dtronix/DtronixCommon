@@ -228,14 +228,14 @@ public class ThreadDispatcher : IDisposable
     /// </summary>
     /// <param name="action">Action to execute</param>
     /// <param name="priority">Priority to execute action with.</param>
-    public void QueueFireForget(
+    public bool QueueFireForget(
         MessagePumpActionBase action,
         int priority = 0)
     {
         if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        _queues[priority + 1].Add(action);
+        return _queues[priority + 1].TryAdd(action, _configs.QueueTryAddTimeout);
     }
 
     /// <summary>
@@ -281,8 +281,9 @@ public class ThreadDispatcher : IDisposable
         if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        _queues[priority + 1].Add(action, action.CancellationToken);
-        return action.Result;
+        return _queues[priority + 1].TryAdd(action, _configs.QueueTryAddTimeout, action.CancellationToken)
+            ? action.Result
+            : Task.CompletedTask;
     }
 
     /// <summary>
@@ -303,8 +304,10 @@ public class ThreadDispatcher : IDisposable
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
         var messageTask = new SimpleMessagePumpTask(action, cancellationToken);
-        _queues[priority + 1].Add(messageTask, cancellationToken);
-        return messageTask.Result;
+
+        return _queues[priority + 1].TryAdd(messageTask, _configs.QueueTryAddTimeout, cancellationToken)
+            ? messageTask.Result
+            : Task.CompletedTask;
     }
 
     /// <summary>
@@ -359,8 +362,9 @@ public class ThreadDispatcher : IDisposable
         if (_queues == null)
             throw new InvalidOperationException("ThreadDispatcher is not running");
 
-        _queues[priority + 1].Add(action, action.CancellationToken);
-        return action.Result;
+        return _queues[priority + 1].TryAdd(action, _configs.QueueTryAddTimeout, action.CancellationToken)
+            ? action.Result
+            : Task.FromResult(default(TResult))!;
     }
 
     /// <summary>
