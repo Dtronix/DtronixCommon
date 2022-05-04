@@ -1,4 +1,4 @@
-﻿using DtronixCommon.Threading.Dispatcher;
+﻿namespace DtronixCommon.Threading.Dispatcher;
 
 /// <summary>
 /// Configurations for the <see cref="ThreadDispatcher"/> class.
