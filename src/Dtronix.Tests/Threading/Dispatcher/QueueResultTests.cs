@@ -55,7 +55,7 @@ public class QueueResultTests
             }
 
             return true;
-        }, DispatcherPriority.Normal, cts.Token);
+        }, 0, cts.Token);
 
         Assert.IsTrue(await task.TestTimeout());
     }

@@ -64,7 +64,7 @@ public class QueueTests
             {
                 ct.ThrowIfCancellationRequested();
             }
-        }, DispatcherPriority.Normal, cts.Token);
+        }, 0, cts.Token);
 
         Assert.ThrowsAsync<OperationCanceledException>(() => task.TestTimeout());
     }
