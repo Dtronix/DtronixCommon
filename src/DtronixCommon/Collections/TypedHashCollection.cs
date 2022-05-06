@@ -170,7 +170,7 @@ public class TypeGroupedHashCollection<TBase> : ICollection<TBase>
             var i = 0;
             foreach (var typedItem in _typedItems)
             {
-                finalizedGroup[i] = new FinalizedGroup()
+                finalizedGroup[i++] = new FinalizedGroup()
                 {
                     Type = typedItem.Key,
                     Items = typedItem.Value.ToArray()
