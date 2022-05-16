@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace DtronixCommon.Collections.Trees;
 
-public struct LGridQuery4
+public class LGridQuery4
 {
     public SmallList<int>[] elements = new SmallList<int>[4];
 }
 
-public struct LGridElt
+public class LGridElt
 {
     // Stores the index to the next element in the loose cell using an indexed SLL.
     public int next;
@@ -30,7 +30,7 @@ public struct LGridElt
     public float hy;
 }
 
-public struct LGridLooseCell
+public class LGridLooseCell
 {
     // Stores the extents of the grid cell relative to the upper-left corner
     // of the grid which expands and shrinks with the elements inserted and 
@@ -41,7 +41,7 @@ public struct LGridLooseCell
     public int head;
 }
 
-struct LGridLoose
+public class LGridLoose
 {
     // Stores all the cells in the loose grid.
     public LGridLooseCell[] cells;
@@ -53,7 +53,7 @@ struct LGridLoose
     public float inv_cell_w, inv_cell_h;
 }
 
-struct LGridTightCell
+public class LGridTightCell
 {
     // Stores the index to the next loose cell in the grid cell.
     public int next;
@@ -62,10 +62,10 @@ struct LGridTightCell
     public int lcell;
 };
 
-struct LGridTight
+public class LGridTight
 {
     // Stores all the tight cell nodes in the grid.
-    FreeList<LGridTightCell> cells;
+    public FreeList<LGridTightCell> cells;
 
     // Stores the tight cell heads.
     public int[] heads;
@@ -77,7 +77,7 @@ struct LGridTight
     public float inv_cell_w, inv_cell_h;
 };
 
-struct LGrid
+public class LGrid
 {
     // Stores the tight cell data for the grid.
     public LGridTight tight;

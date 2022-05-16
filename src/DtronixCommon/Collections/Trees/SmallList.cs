@@ -11,7 +11,7 @@ namespace DtronixCommon.Collections.Trees;
 
 public class SmallList<T> : IDisposable
 {
-    private struct ListData
+    private class ListData
     {
         public T[] buf = new T[fixed_cap];
         public T[] data;
