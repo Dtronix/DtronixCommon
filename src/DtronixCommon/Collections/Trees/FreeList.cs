@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -18,7 +19,7 @@ namespace DtronixCommon.Collections.Trees
         }
 
         private SmallList<FreeElement> data;
-        private int first_free;
+        private int first_free = -1;
 
         public FreeList()
         {
@@ -27,41 +28,56 @@ namespace DtronixCommon.Collections.Trees
 
         public int insert(T element)
         {
-            throw new NotImplementedException();
+            if (first_free != -1)
+            {
+                int index = first_free;
+                first_free = data[first_free].next;
+                data[index].element = element;
+                return index;
+            }
+            else
+            {
+                var fe = new FreeElement
+                {
+                    element = element
+                };
+                data.push_back(fe);
+                return data.size() - 1;
+            }
         }
 
 
         public void erase(int n)
         {
-            throw new NotImplementedException();
+            Debug.Assert(n >= 0 && n < data.size());
+            data[n].next = first_free;
+            first_free = n;
         }
 
 
         public void clear()
         {
-            throw new NotImplementedException();
+            data.clear();
+            first_free = -1;
         }
 
         public int range()
         {
-            throw new NotImplementedException();
+            return data.size();
         }
 
-        public T this[int index]
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
+        public ref T this[int n] => ref data[n].element;
 
         public void reserve(int n)
         {
-            throw new NotImplementedException();
+            data.reserve(n);
         }
-        public void swap(SmallList<T> other)
+        public void swap(FreeList<T> other)
         {
-            throw new NotImplementedException();
+            int temp = first_free;
+            data.swap(other.data);
+            first_free = other.first_free;
+            other.first_free = temp;
         }
 
     }
