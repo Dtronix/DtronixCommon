@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,16 +22,16 @@ public static class LooseGridTree
     public static LGrid lgrid_create(
         float lcell_w,
         float lcell_h,
-        float tcell_w, 
+        float tcell_w,
         float tcell_h,
-        float l, 
+        float l,
         float t,
-        float r, 
+        float r,
         float b)
     {
         float w = r - l;
         float h = b - t;
-        int num_lcols = ceil_div(w, lcell_w); 
+        int num_lcols = ceil_div(w, lcell_w);
         int num_lrows = ceil_div(h, lcell_h);
         int num_tcols = ceil_div(w, tcell_w);
         int num_trows = ceil_div(h, tcell_h);
@@ -71,6 +72,7 @@ public static class LooseGridTree
             grid.loose.cells[c].rect[2] = float.MinValue;
             grid.loose.cells[c].rect[3] = float.MinValue;
         }
+
         return grid;
     }
 
@@ -198,7 +200,7 @@ public static class LooseGridTree
                 {
                     LGridTightCell tcell = grid.tight.cells[tcell_idx];
                     LGridLooseCell lcell = grid.loose.cells[tcell.lcell];
-                    if (lcell_idxs.find_index(tcell.lcell) == -1 
+                    if (lcell_idxs.find_index(tcell.lcell) == -1
                         && Vector.GreaterThanAll(qrect, new Vector<float>(lcell.rect)))
                         lcell_idxs.push_back(tcell.lcell);
                     tcell_idx = tcell.next;
@@ -216,13 +218,54 @@ public static class LooseGridTree
             {
                 // If the element intersects the search rectangle, add it to the
                 // resulting elements unless it has an ID that should be omitted.
-                const LGridElt* elt = &grid.elts[elt_idx];
-                if (elt.id != omit_id && simd_rect_intersect4f(qrect_vec, element_rect(elt)))
+                LGridElt elt = grid.elts[elt_idx];
+                if (elt.id != omit_id && Vector.GreaterThanAll(qrect, element_rect(elt)))
                     res.push_back(elt.id);
                 elt_idx = elt.next;
             }
         }
+
         return res;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector<float> simd_sub4f(in Vector<float> left, in Vector<float> right)
+    {
+        return Vector.Subtract(left, right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector<float> simd_scalar4f(float value)
+    {
+        return new Vector<float>(new[]
+        {
+            value,
+            value,
+            value,
+            value,
+        });
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector<float> simd_add4f(in Vector<float> left, in Vector<float> right)
+    {
+        return Vector.Add(left, right);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector<int> simd_clamp4i(in Vector<int> left, in Vector<int> right)
+    {
+        Vector4.Clamp()
+        var clamp_vec = new Vector<int>(new[]
+        {
+            grid.tight.num_cols - 1,
+            grid.tight.num_rows - 1,
+            grid.tight.num_cols - 1,
+            grid.tight.num_rows - 1
+        });
+
+        var bottomClamp = Vector.Max(Vector<int>.Zero, cell_xyf_vec);
+        var topClamp = Vector.Min(bottomClamp, clamp_vec);
     }
 
     // Returns all the element IDs that intersect the specified 4 rectangles excluding elements
@@ -230,89 +273,101 @@ public static class LooseGridTree
     public static LGridQuery4 lgrid_query4(LGrid grid,
         in Vector<float> mx4,
         in Vector<float> my4,
-        in Vector<float> hx4, 
-        in Vector<float> hy4,
+        in Vector<float> hx_vec,
+        in Vector<float> hy_vec,
         in Vector<int> omit_id4)
     {
-        /*
-        LGridQuery4 lgrid_query4(const LGrid* grid, const SimdVec4f* mx4, const SimdVec4f* my4, 
-                                 const SimdVec4f* hx4, const SimdVec4f* hy4, const SimdVec4i* omit_id4)
+        Vector.Multiply()
+        var mx_vec = Vector.Subtract(mx4, new Vector<float>(new[]
         {
-            __m128 hx_vec = simd_load4f(hx4), hy_vec = simd_load4f(hy4);
-            __m128 mx_vec = simd_sub4f(simd_load4f(mx4), simd_scalar4f(grid->x));
-            __m128 my_vec = simd_sub4f(simd_load4f(my4), simd_scalar4f(grid->y));
-            __m128 ql_vec = simd_sub4f(mx_vec, hx_vec), qt_vec = simd_sub4f(my_vec, hy_vec);
-            __m128 qr_vec = simd_add4f(mx_vec, hx_vec), qb_vec = simd_add4f(my_vec, hy_vec);
+            grid.x, 
+            grid.x,
+            grid.x, 
+            grid.x
+        }));
+        var my_vec = simd_sub4f(simd_load4f(my4), simd_scalar4f(grid.y));
+        var ql_vec = simd_sub4f(mx_vec, hx_vec);
+        var qt_vec = simd_sub4f(my_vec, hy_vec);
+        var qr_vec = simd_add4f(mx_vec, hx_vec);
+        var qb_vec = simd_add4f(my_vec, hy_vec);
 
-            __m128 inv_cell_w_vec = simd_scalar4f(grid->tight.inv_cell_w), inv_cell_h_vec = simd_scalar4f(grid->tight.inv_cell_h);
-            __m128i max_x_vec = simd_scalar4i(grid->tight.num_cols-1), max_y_vec = simd_scalar4i(grid->tight.num_rows-1);
-            __m128i tmin_x_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(ql_vec, inv_cell_w_vec)), simd_zero4i(), max_x_vec);
-            __m128i tmin_y_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qt_vec, inv_cell_h_vec)), simd_zero4i(), max_y_vec);
-            __m128i tmax_x_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qr_vec, inv_cell_w_vec)), simd_zero4i(), max_x_vec);
-            __m128i tmax_y_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qb_vec, inv_cell_h_vec)), simd_zero4i(), max_y_vec);
+        __m128 inv_cell_w_vec = simd_scalar4f(grid.tight.inv_cell_w),
+            inv_cell_h_vec = simd_scalar4f(grid.tight.inv_cell_h);
+        __m128i max_x_vec = simd_scalar4i(grid.tight.num_cols - 1),
+            max_y_vec = simd_scalar4i(grid.tight.num_rows - 1);
+        __m128i tmin_x_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(ql_vec, inv_cell_w_vec)), simd_zero4i(), max_x_vec);
+        __m128i tmin_y_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qt_vec, inv_cell_h_vec)), simd_zero4i(), max_y_vec);
+        __m128i tmax_x_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qr_vec, inv_cell_w_vec)), simd_zero4i(), max_x_vec);
+        __m128i tmax_y_vec = simd_clamp4i(simd_ftoi4f(simd_mul4f(qb_vec, inv_cell_h_vec)), simd_zero4i(), max_y_vec);
 
-            const SimdVec4i tmin_x4 = simd_store4i(tmin_x_vec), tmin_y4 = simd_store4i(tmin_y_vec);
-            const SimdVec4i tmax_x4 = simd_store4i(tmax_x_vec), tmax_y4 = simd_store4i(tmax_y_vec);
-            const SimdVec4f ql4 = simd_store4f(ql_vec), qt4 = simd_store4f(qt_vec);
-            const SimdVec4f qr4 = simd_store4f(qr_vec), qb4 = simd_store4f(qb_vec);
+        const SimdVec4i tmin_x4 = simd_store4i(tmin_x_vec), tmin_y4 = simd_store4i(tmin_y_vec);
+        const SimdVec4i tmax_x4 = simd_store4i(tmax_x_vec), tmax_y4 = simd_store4i(tmax_y_vec);
+        const SimdVec4f ql4 = simd_store4f(ql_vec), qt4 = simd_store4f(qt_vec);
+        const SimdVec4f qr4 = simd_store4f(qr_vec), qb4 = simd_store4f(qb_vec);
 
-            LGridQuery4 res4;
-            for (int k=0; k < 4; ++k)
+        LGridQuery4 res4;
+        for (int k = 0; k < 4; ++k)
+        {
+            const int trect[
+            4] = {
+                tmin_x4.data[k], tmin_y4.data[k], tmax_x4.data[k], tmax_y4.data[k]
+            }
+            ;
+            const int omit_id = omit_id4.data[k];
+
+            // Gather the intersecting loose cells in the tight cells that intersect.
+            SmallList<int> lcell_idxs;
+            __m128 qrect_vec = simd_create4f(ql4.data[k], qt4.data[k], qr4.data[k], qb4.data[k]);
+            for (int ty = trect[1]; ty <= trect[3]; ++ty)
             {
-                const int trect[4] = {tmin_x4.data[k], tmin_y4.data[k], tmax_x4.data[k], tmax_y4.data[k]};
-                const int omit_id = omit_id4->data[k];
-
-                // Gather the intersecting loose cells in the tight cells that intersect.
-                SmallList<int> lcell_idxs;
-                __m128 qrect_vec = simd_create4f(ql4.data[k], qt4.data[k], qr4.data[k], qb4.data[k]);
-                for (int ty = trect[1]; ty <= trect[3]; ++ty)
+                const int* tight_row = grid.tight.heads + ty * grid.tight.num_cols;
+                for (int tx = trect[0]; tx <= trect[2]; ++tx)
                 {
-                    const int* tight_row = grid->tight.heads + ty*grid->tight.num_cols;
-                    for (int tx = trect[0]; tx <= trect[2]; ++tx)
+                    // Iterate through the loose cells that intersect the tight cells.
+                    int tcell_idx = tight_row[tx];
+                    while (tcell_idx != -1)
                     {
-                        // Iterate through the loose cells that intersect the tight cells.
-                        int tcell_idx = tight_row[tx];
-                        while (tcell_idx != -1)
-                        {
-                            const LGridTightCell* tcell = &grid->tight.cells[tcell_idx];
-                            if (lcell_idxs.find_index(tcell->lcell) && simd_rect_intersect4f(qrect_vec, simd_loadu4f(grid->loose.cells[tcell->lcell].rect)))
-                                lcell_idxs.push_back(tcell->lcell);
-                            tcell_idx = tcell->next;
-                        }
-                    }
-                }
-
-                // For each loose cell, determine what elements intersect.
-                for (int j=0; j < lcell_idxs.size(); ++j)
-                {
-                    const LGridLooseCell* lcell = &grid->loose.cells[lcell_idxs[j]];
-                    int elt_idx = lcell->head;
-                    while (elt_idx != -1)
-                    {
-                        // If the element intersects the search rectangle, add it to the
-                        // resulting elements unless it has an ID that should be omitted.
-                        const LGridElt* elt = &grid->elts[elt_idx];
-                        if (elt->id != omit_id && simd_rect_intersect4f(qrect_vec, element_rect(elt)))
-                            res4.elements[k].push_back(elt->id);
-                        elt_idx = elt->next;
+                        const LGridTightCell* tcell = &grid.tight.cells[tcell_idx];
+                        if (lcell_idxs.find_index(tcell.lcell) && simd_rect_intersect4f(qrect_vec,
+                                simd_loadu4f(grid.loose.cells[tcell.lcell].rect)))
+                            lcell_idxs.push_back(tcell.lcell);
+                        tcell_idx = tcell.next;
                     }
                 }
             }
-            return res4;
+
+            // For each loose cell, determine what elements intersect.
+            for (int j = 0; j < lcell_idxs.size(); ++j)
+            {
+                const LGridLooseCell* lcell = &grid.loose.cells[lcell_idxs[j]];
+                int elt_idx = lcell.head;
+                while (elt_idx != -1)
+                {
+                    // If the element intersects the search rectangle, add it to the
+                    // resulting elements unless it has an ID that should be omitted.
+                    const LGridElt* elt = &grid.elts[elt_idx];
+                    if (elt.id != omit_id && simd_rect_intersect4f(qrect_vec, element_rect(elt)))
+                        res4.elements[k].push_back(elt.id);
+                    elt_idx = elt.next;
+                }
+            }
         }
-         */
+
+        return res4;
     }
 
-    // Returns true if the specified rectangle is inside the grid boundaries.
+}
+
+// Returns true if the specified rectangle is inside the grid boundaries.
     public static bool lgrid_in_bounds(LGrid grid, float mx, float my, float hx, float hy)
     {
         /*
         bool lgrid_in_bounds(const LGrid* grid, float mx, float my, float hx, float hy)
         {
-            mx -= grid->x;
-            my -= grid->y;
+            mx -= grid.x;
+            my -= grid.y;
             const float x1 = mx-hx, y1 = my-hy, x2 = mx+hx, y2 = my+hy;
-            return x1 >= 0.0f && x2 < grid->w && y1 >= 0.0f && y2 < grid->h;
+            return x1 >= 0.0f && x2 < grid.w && y1 >= 0.0f && y2 < grid.h;
         }
          */
     }
@@ -349,50 +404,50 @@ public static class LooseGridTree
 void lgrid_optimize(LGrid* grid)
 {
     // Clear all the tight cell data.
-    for (int j=0; j < grid->tight.num_cells; ++j)
-        grid->tight.heads[j] = -1;
-    grid->tight.cells.clear();
+    for (int j=0; j < grid.tight.num_cells; ++j)
+        grid.tight.heads[j] = -1;
+    grid.tight.cells.clear();
  
     // Optimize the memory layout of the grid.
     grid_optimize(grid);
  
     #pragma omp parallel for
-    for (int c=0; c < grid->loose.num_cells; ++c)
+    for (int c=0; c < grid.loose.num_cells; ++c)
     {
         // Empty the loose cell's bounding box.
-        LGridLooseCell* lcell = &grid->loose.cells[c];
-        lcell->rect[0] = FLT_MAX;
-        lcell->rect[1] = FLT_MAX;
-        lcell->rect[2] = -FLT_MAX;
-        lcell->rect[3] = -FLT_MAX;
+        LGridLooseCell* lcell = &grid.loose.cells[c];
+        lcell.rect[0] = FLT_MAX;
+        lcell.rect[1] = FLT_MAX;
+        lcell.rect[2] = -FLT_MAX;
+        lcell.rect[3] = -FLT_MAX;
  
         // Expand the bounding box by each element's extents in 
         // the loose cell.
-        int elt_idx = lcell->head;
+        int elt_idx = lcell.head;
         while (elt_idx != -1)
         {
-            const LGridElt* elt = &grid->elts[elt_idx];
-            lcell->rect[0] = min_flt(lcell->rect[0], elt->mx - elt->hx);
-            lcell->rect[1] = min_flt(lcell->rect[1], elt->my - elt->hy);
-            lcell->rect[2] = max_flt(lcell->rect[2], elt->mx + elt->hx);
-            lcell->rect[3] = max_flt(lcell->rect[3], elt->my + elt->hy);
-            elt_idx = elt->next;
+            const LGridElt* elt = &grid.elts[elt_idx];
+            lcell.rect[0] = min_flt(lcell.rect[0], elt.mx - elt.hx);
+            lcell.rect[1] = min_flt(lcell.rect[1], elt.my - elt.hy);
+            lcell.rect[2] = max_flt(lcell.rect[2], elt.mx + elt.hx);
+            lcell.rect[3] = max_flt(lcell.rect[3], elt.my + elt.hy);
+            elt_idx = elt.next;
         }
     }
  
-    for (int c=0; c < grid->loose.num_cells; ++c)
+    for (int c=0; c < grid.loose.num_cells; ++c)
     {
         // Insert the loose cell to all the tight cells in which 
         // it now belongs.
-        LGridLooseCell* lcell = &grid->loose.cells[c];
-        const SimdVec4i trect = to_tcell_idx4(grid, simd_loadu4f(lcell->rect));
+        LGridLooseCell* lcell = &grid.loose.cells[c];
+        const SimdVec4i trect = to_tcell_idx4(grid, simd_loadu4f(lcell.rect));
         for (int ty = trect.data[1]; ty <= trect.data[3]; ++ty)
         {
-            int* tight_row = grid->tight.heads + ty*grid->tight.num_cols;
+            int* tight_row = grid.tight.heads + ty*grid.tight.num_cols;
             for (int tx = trect.data[0]; tx <= trect.data[2]; ++tx)
             {
                 const LGridTightCell new_tcell = {tight_row[tx], c};
-                tight_row[tx] = grid->tight.cells.insert(new_tcell);
+                tight_row[tx] = grid.tight.cells.insert(new_tcell);
             }
         }
     }
