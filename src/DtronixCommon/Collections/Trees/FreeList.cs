@@ -11,14 +11,13 @@ namespace DtronixCommon.Collections.Trees
     public class FreeList<T>
     {
         // TODO: Review this further.
-        [StructLayout(LayoutKind.Explicit)]
         public struct FreeElement
-        {
-            [FieldOffset(0)] public T element;
-            [FieldOffset(0)] public int next;
+        { 
+            public T element;
+            public int next;
         }
 
-        private SmallList<FreeElement> data;
+        private SmallList<FreeElement> data = new SmallList<FreeElement>();
         private int first_free = -1;
 
         public FreeList()

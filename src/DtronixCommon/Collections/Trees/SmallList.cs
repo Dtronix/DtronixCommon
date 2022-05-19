@@ -13,8 +13,8 @@ public class SmallList<T> : IDisposable
 {
     private class ListData
     {
-        public T[] buf = new T[fixed_cap];
-        public T[] data;
+        public T[] buf;
+        public T[] data = new T[fixed_cap];
         public int num = 0;
         public int cap = fixed_cap;
     }
@@ -25,7 +25,7 @@ public class SmallList<T> : IDisposable
 
     public SmallList()
     {
-
+        ld = new ListData();
     }
 
     public SmallList(SmallList<T> other)

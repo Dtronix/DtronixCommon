@@ -65,7 +65,7 @@ public class LGridTightCell
 public class LGridTight
 {
     // Stores all the tight cell nodes in the grid.
-    public FreeList<LGridTightCell> cells;
+    public FreeList<LGridTightCell> cells = new FreeList<LGridTightCell>();
 
     // Stores the tight cell heads.
     public int[] heads;
@@ -86,7 +86,7 @@ public class LGrid
     public LGridLoose loose;
 
     // Stores all the elements in the grid.
-    public FreeList<LGridElt> elts;
+    public FreeList<LGridElt> elts = new FreeList<LGridElt>();
 
     // Stores the number of elements in the grid.
     public int num_elts;

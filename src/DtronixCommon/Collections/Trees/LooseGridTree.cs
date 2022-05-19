@@ -10,15 +10,26 @@ using System.Threading.Tasks;
 
 namespace DtronixCommon.Collections.Trees;
 
-/// <summary>
-/// Creates a loose grid encompassing the specified extents using the specified cell 
-/// size. Elements inserted to the loose grid are only inserted in one cell, but the
-/// extents of each cell are allowed to expand and shrink. To avoid requiring every
-/// loose cell to be checked during a search, a second grid of tight cells referencing
-/// the loose cells is stored.
-/// </summary>
+
 public static class LooseGridTree
 {
+
+    /// <summary>
+    /// Creates a loose grid encompassing the specified extents using the specified cell 
+    /// size. Elements inserted to the loose grid are only inserted in one cell, but the
+    /// extents of each cell are allowed to expand and shrink. To avoid requiring every
+    /// loose cell to be checked during a search, a second grid of tight cells referencing
+    /// the loose cells is stored.
+    /// </summary>
+    /// <param name="lcell_w">Width of the loose cell</param>
+    /// <param name="lcell_h">Height of the loose cell</param>
+    /// <param name="tcell_w">Width of the tight cell</param>
+    /// <param name="tcell_h">Height of the tight cell</param>
+    /// <param name="l">Left bounds.</param>
+    /// <param name="t">Top bounds</param>
+    /// <param name="r">Right bounds</param>
+    /// <param name="b">Bottom bounds</param>
+    /// <returns></returns>
     public static LGrid lgrid_create(
         float lcell_w,
         float lcell_h,
@@ -42,17 +53,23 @@ public static class LooseGridTree
             x = l,
             y = t,
             h = w,
-            w = h
+            w = h,
+            loose = new LGridLoose
+            {
+                num_cols = num_lcols,
+                num_rows = num_lrows,
+            },
+            tight = new LGridTight
+            {
+                num_cols = num_tcols,
+                num_rows = num_trows
+            }
         };
 
-        grid.loose.num_cols = num_lcols;
-        grid.loose.num_rows = num_lrows;
         grid.loose.num_cells = grid.loose.num_cols * grid.loose.num_rows;
         grid.loose.inv_cell_w = 1.0f / lcell_w;
         grid.loose.inv_cell_h = 1.0f / lcell_h;
 
-        grid.tight.num_cols = num_tcols;
-        grid.tight.num_rows = num_trows;
         grid.tight.num_cells = grid.tight.num_cols * grid.tight.num_rows;
         grid.tight.inv_cell_w = 1.0f / tcell_w;
         grid.tight.inv_cell_h = 1.0f / tcell_h;
@@ -66,11 +83,17 @@ public static class LooseGridTree
         grid.loose.cells = new LGridLooseCell[grid.loose.num_cells];
         for (int c = 0; c < grid.loose.num_cells; ++c)
         {
-            grid.loose.cells[c].head = -1;
-            grid.loose.cells[c].rect[0] = float.MaxValue;
-            grid.loose.cells[c].rect[1] = float.MaxValue;
-            grid.loose.cells[c].rect[2] = float.MinValue;
-            grid.loose.cells[c].rect[3] = float.MinValue;
+            grid.loose.cells[c] = new LGridLooseCell
+            {
+                head = -1,
+                rect = new[]
+                {
+                    float.MaxValue, 
+                    float.MaxValue, 
+                    float.MinValue,
+                    float.MinValue
+                }
+            };
         }
 
         return grid;
@@ -182,7 +205,8 @@ public static class LooseGridTree
             mx - hx,
             my - hy,
             mx + hx,
-            my + hy
+            my + hy,
+            0,0,0,0
         });
 
         var trect = to_tcell_idx4(grid, qrect);
@@ -200,8 +224,10 @@ public static class LooseGridTree
                 {
                     LGridTightCell tcell = grid.tight.cells[tcell_idx];
                     LGridLooseCell lcell = grid.loose.cells[tcell.lcell];
-                    if (lcell_idxs.find_index(tcell.lcell) == -1
-                        && Vector.GreaterThanAll(qrect, new Vector<float>(lcell.rect)))
+                    var check1 = lcell_idxs.find_index(tcell.lcell) == -1;
+                    var check2 = Vector.GreaterThanOrEqualAll(Vector128.Create(lcell.rect[0], lcell.rect[1], lcell.rect[2], lcell.rect[3]).AsVector(),
+                        qrect);
+                    if (check1 && check2)
                         lcell_idxs.push_back(tcell.lcell);
                     tcell_idx = tcell.next;
                 }
@@ -219,7 +245,9 @@ public static class LooseGridTree
                 // If the element intersects the search rectangle, add it to the
                 // resulting elements unless it has an ID that should be omitted.
                 LGridElt elt = grid.elts[elt_idx];
-                if (elt.id != omit_id && Vector.GreaterThanAll(qrect, element_rect(elt)))
+                var check1 = elt.id != omit_id;
+                var check2 = Vector.GreaterThanOrEqualAll(element_rect(elt), qrect);
+                if (check1 && check2)
                     res.push_back(elt.id);
                 elt_idx = elt.next;
             }
@@ -253,21 +281,12 @@ public static class LooseGridTree
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static Vector<int> simd_clamp4i(in Vector<int> left, in Vector<int> right)
+    private static ref Vector<float> simd_load4f(ref Vector<float> left)
     {
-        Vector4.Clamp()
-        var clamp_vec = new Vector<int>(new[]
-        {
-            grid.tight.num_cols - 1,
-            grid.tight.num_rows - 1,
-            grid.tight.num_cols - 1,
-            grid.tight.num_rows - 1
-        });
-
-        var bottomClamp = Vector.Max(Vector<int>.Zero, cell_xyf_vec);
-        var topClamp = Vector.Min(bottomClamp, clamp_vec);
+        return ref left;
     }
 
+    /*
     // Returns all the element IDs that intersect the specified 4 rectangles excluding elements
     // with the specified IDs to omit.
     public static LGridQuery4 lgrid_query4(LGrid grid,
@@ -355,21 +374,21 @@ public static class LooseGridTree
 
         return res4;
     }
-
-}
+    
+}*/
 
 // Returns true if the specified rectangle is inside the grid boundaries.
-    public static bool lgrid_in_bounds(LGrid grid, float mx, float my, float hx, float hy)
+public static bool lgrid_in_bounds(LGrid grid, float mx, float my, float hx, float hy)
     {
-        /*
-        bool lgrid_in_bounds(const LGrid* grid, float mx, float my, float hx, float hy)
-        {
-            mx -= grid.x;
-            my -= grid.y;
-            const float x1 = mx-hx, y1 = my-hy, x2 = mx+hx, y2 = my+hy;
-            return x1 >= 0.0f && x2 < grid.w && y1 >= 0.0f && y2 < grid.h;
-        }
-         */
+
+        mx -= grid.x;
+        my -= grid.y;
+        var x1 = mx - hx;
+        var y1 = my - hy;
+        var x2 = mx + hx;
+        var y2 = my + hy;
+        return x1 >= 0.0f && x2 < grid.w && y1 >= 0.0f && y2 < grid.h;
+
     }
 
     // Optimizes the grid, shrinking bounding boxes in response to removed elements and
@@ -462,22 +481,25 @@ void lgrid_optimize(LGrid* grid)
             elt.mx - elt.hx,
             elt.my - elt.hy,
             elt.mx + elt.hx,
-            elt.my + elt.hy
+            elt.my + elt.hy,
+            0,0,0,0
         });
     }
 
 public static void expand_aabb(LGrid grid, int cell_idx, float mx, float my, float hx, float hy)
     {
         LGridLooseCell lcell = grid.loose.cells[cell_idx];
-        Vector<float> prev_rect = new Vector<float>(new[]
+
+        var prev_rect = new Vector<float>(new[]
         {
             lcell.rect[0],
             lcell.rect[1], 
             lcell.rect[2], 
-            lcell.rect[3]
+            lcell.rect[3],
+            0,0,0,0
         });
 
-    lcell.rect[0] = min_flt(lcell.rect[0], mx - hx);
+       lcell.rect[0] = min_flt(lcell.rect[0], mx - hx);
         lcell.rect[1] = min_flt(lcell.rect[1], my - hy);
         lcell.rect[2] = max_flt(lcell.rect[2], mx + hx);
         lcell.rect[3] = max_flt(lcell.rect[3], my + hy);
@@ -488,7 +510,8 @@ public static void expand_aabb(LGrid grid, int cell_idx, float mx, float my, flo
             mx - hx,
             my - hy,
             mx + hx,
-            my + hy
+            my + hy,
+            0,0,0,0
         });
         var trect = to_tcell_idx4(grid, elt_rect);
 
@@ -582,6 +605,17 @@ public static void expand_aabb(LGrid grid, int cell_idx, float mx, float my, flo
         return min_int(max_int(cell_pos, 0), num_cells - 1);
     }
 
+    /*
+     *
+    __m128 inv_cell_size_vec = simd_create4f(grid->tight.inv_cell_w, grid->tight.inv_cell_h, 
+                                             grid->tight.inv_cell_w, grid->tight.inv_cell_h);
+    __m128 cell_xyf_vec = simd_mul4f(rect, inv_cell_size_vec);
+    __m128i clamp_vec = simd_create4i(grid->tight.num_cols-1, grid->tight.num_rows-1, 
+                                      grid->tight.num_cols-1, grid->tight.num_rows-1);
+    __m128i cell_xy_vec = simd_clamp4i(simd_ftoi4f(cell_xyf_vec), simd_zero4i(), clamp_vec);
+    return simd_store4i(cell_xy_vec);
+     */
+
     static Vector<int> to_tcell_idx4(LGrid grid, Vector<float> rect)
     {
         var inv_cell_size_vec = new Vector<float>(new []
@@ -589,7 +623,8 @@ public static void expand_aabb(LGrid grid, int cell_idx, float mx, float my, flo
             grid.tight.inv_cell_w,
             grid.tight.inv_cell_h,
             grid.tight.inv_cell_w,
-            grid.tight.inv_cell_h
+            grid.tight.inv_cell_h,
+            0,0,0,0
         });
 
         var cell_xyf_vec = Vector.ConvertToInt32(Vector.Multiply(rect, inv_cell_size_vec));
@@ -599,7 +634,8 @@ public static void expand_aabb(LGrid grid, int cell_idx, float mx, float my, flo
             grid.tight.num_cols - 1,
             grid.tight.num_rows - 1,
             grid.tight.num_cols - 1,
-            grid.tight.num_rows - 1
+            grid.tight.num_rows - 1,
+            0,0,0,0
         });
 
         var bottomClamp = Vector.Max(Vector<int>.Zero, cell_xyf_vec);

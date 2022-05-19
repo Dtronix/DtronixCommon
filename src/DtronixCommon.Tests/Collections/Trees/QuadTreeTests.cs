@@ -28,6 +28,8 @@ public class QuadTreeTests
         var qt = new Quadtree(500, 500, 100, 100);
 
         var val = qt.Insert(1234, 0, 0, 3, 3);
+        var va3l = qt.Insert(12345, 0, 0, 6, 6);
+        var va4l = qt.Insert(12346, 50, 50, 57, 57);
         //var va245l = qt.Insert(12345, 2, 2, 3, 3);
         //var va2l = qt.Insert(123456, 3, 3, 4, 4);
         //var va24l = qt.Insert(1234567, 3, 3, 4, 4);
