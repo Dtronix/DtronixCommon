@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DtronixCommon", "DtronixCom
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DtronixCommon.Tests", "DtronixCommon.Tests\DtronixCommon.Tests.csproj", "{259BDE0B-2E9F-434A-A04B-A57D59C41974}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DtronixCommonSamples", "DtronixCommonSamples\DtronixCommonSamples.csproj", "{4141C556-854A-4B49-9186-45DAFB7593FA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{259BDE0B-2E9F-434A-A04B-A57D59C41974}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{259BDE0B-2E9F-434A-A04B-A57D59C41974}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{259BDE0B-2E9F-434A-A04B-A57D59C41974}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4141C556-854A-4B49-9186-45DAFB7593FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4141C556-854A-4B49-9186-45DAFB7593FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4141C556-854A-4B49-9186-45DAFB7593FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4141C556-854A-4B49-9186-45DAFB7593FA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

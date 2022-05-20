@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,17 +33,17 @@ public class Quadtree
     }
 
     // Outputs a list of elements found in the specified rectangle.
-    public int Insert(int id, float x1, float y1, float x2, float y2)
+    public int Insert(float x1, float y1, float x2, float y2)
     {
         // Insert a new element.
         int newElement = _elts.Insert();
 
         // Set the fields of the new element.
-        _elts.Set(newElement, _eltIdxLft, floor_int(x1));
-        _elts.Set(newElement, _eltIdxTop, floor_int(y1));
-        _elts.Set(newElement, _eltIdxRgt, floor_int(x2));
-        _elts.Set(newElement, _eltIdxBtm, floor_int(y2));
-        _elts.Set(newElement, _eltIdxId, id);
+        _elts.Set(newElement, _eltIdxLft, (int)x1);
+        _elts.Set(newElement, _eltIdxTop, (int)y1);
+        _elts.Set(newElement, _eltIdxRgt, (int)x2);
+        _elts.Set(newElement, _eltIdxBtm, (int)y2);
+        //_elts.Set(newElement, _eltIdxId, id);
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
@@ -147,23 +150,19 @@ public class Quadtree
     }
 
     // Returns a list of elements found in the specified rectangle.
-    public IntList Query(float x1, float y1, float x2, float y2)
+    public IntList Query(int x1, int y1, int x2, int y2)
     {
         return Query(x1, y1, x2, y2, -1);
     }
 
     // Returns a list of elements found in the specified rectangle excluding the
     // specified element to omit.
-    public IntList Query(float x1, float y1, float x2, float y2, int omitElement)
+    public IntList Query(int x1, int y1, int x2, int y2, int omitElement)
     {
         IntList intListOut = new IntList(1);
 
         // Find the leaves that intersect the specified query rectangle.
-        int qlft = floor_int(x1);
-        int qtop = floor_int(y1);
-        int qrgt = floor_int(x2);
-        int qbtm = floor_int(y2);
-        IntList leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, qlft, qtop, qrgt, qbtm);
+        IntList leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
 
         if (_tempSize < _elts.Size())
         {
@@ -185,7 +184,7 @@ public class Quadtree
                 int top = _elts.Get(element, _eltIdxTop);
                 int rgt = _elts.Get(element, _eltIdxRgt);
                 int btm = _elts.Get(element, _eltIdxBtm);
-                if (!_temp[element] && element != omitElement && Intersect(qlft, qtop, qrgt, qbtm, lft, top, rgt, btm))
+                if (!_temp[element] && element != omitElement && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
                     intListOut.Set(intListOut.PushBack(), 0, element);
                     _temp[element] = true;
@@ -199,6 +198,41 @@ public class Quadtree
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
+    }
+
+    // Returns a list of elements found in the specified rectangle excluding the
+    // specified element to omit.
+    public void QueryVisitor(float x1, float y1, float x2, float y2, Action<int> visit)
+    {
+        // Find the leaves that intersect the specified query rectangle.
+        int qlft = (int)x1;
+        int qtop = (int)y1;
+        int qrgt = (int)x2;
+        int qbtm = (int)y2;
+        IntList leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, qlft, qtop, qrgt, qbtm);
+
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Size(); ++j)
+        {
+            int ndIndex = leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _enodes.Get(eltNodeIndex, _enodeIdxElt);
+                int lft = _elts.Get(element, _eltIdxLft);
+                int top = _elts.Get(element, _eltIdxTop);
+                int rgt = _elts.Get(element, _eltIdxRgt);
+                int btm = _elts.Get(element, _eltIdxBtm);
+                //int id = _elts.Get(element, _eltIdxId);
+                if (Intersect(qlft, qtop, qrgt, qbtm, lft, top, rgt, btm))
+                {
+                    visit(element);
+                }
+                eltNodeIndex = _enodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+        }
     }
 
     // Traverses all the nodes in the tree, calling 'branch' for branch nodes and 'leaf' 
@@ -238,13 +272,10 @@ public class Quadtree
         }
     }
 
-    private static int floor_int(float val)
-    {
-        return (int)val;
-    }
 
-    private static bool Intersect(int l1, int t1, int r1, int b1,
-                                     int l2, int t2, int r2, int b2)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool Intersect(in int l1, in int t1, in int r1, in int b1,
+        in int l2, in int t2, in int r2, in int b2)
     {
         return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
     }
@@ -403,10 +434,10 @@ public class Quadtree
     const int _eltIdxLft = 0, _eltIdxTop = 1, _eltIdxRgt = 2, _eltIdxBtm = 3;
 
     // Stores the ID of the element.
-    const int _eltIdxId = 4;
+    //const int _eltIdxId = 4;
 
     // Stores all the elements in the quadtree.
-    private IntList _elts = new IntList(5);
+    private IntList _elts = new IntList(4);
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
