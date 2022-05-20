@@ -10,40 +10,42 @@ namespace DtronixCommonSamples
     {
         static void Main(string[] args)
         {
-            var qt = new Quadtree(int.MaxValue, int.MaxValue, 8, 8);
+            var qt = new LongQuadtree(int.MaxValue, int.MaxValue, 8, 8);
 
             int id = 0;
             const int MinMax = 50000;
             var rand = new Random();
 
+            var baseX = rand.Next(1, MinMax);
+            var baseY = rand.Next(1, MinMax);
+            var width = rand.Next(0, MinMax);
+            var height = rand.Next(0, MinMax);
+            var count = rand.Next(20, 500);
+
+            Benchmark("Inserts", () =>
+            {
+                Console.WriteLine($"Writing {count * count} random quads.");
+
+                for (int x = 0; x < count; x++)
+                {
+                    for (int y = 0; y < count; y++)
+                    {
+                        qt.Insert(baseX + x, baseY + y, baseY + y + width, baseY + y + height);
+                    }
+                }
+            });
+
             for (int i = 0; i < 500; i++)
             {
-                var baseX = rand.Next(1, MinMax);
-                var baseY = rand.Next(1, MinMax);
-                var width = rand.Next(0, MinMax);
-                var height = rand.Next(0, MinMax);
-                var count = rand.Next(20, 50);
-                
-                Benchmark("Inserts", () =>
-                {
-                    Console.WriteLine($"Writing {count * count} random quads.");
 
-                    for (int x = 0; x < count; x++)
-                    {
-                        for (int y = 0; y < count; y++)
-                        {
-                            qt.Insert(baseX + x, baseY + y, baseY + y + width, baseY + y + height);
-                        }
-                    }
-                });
                 
-                IntList list = null;
+                LongList list = null;
                 Benchmark("Removal Query", () =>
                 {
-                    list = qt.Query(0, 0, int.MaxValue, int.MaxValue, 800000);
+                    list = qt.Query(0, 0, long.MaxValue, long.MaxValue, -1);
                 });
                 
-
+                /*
                 Benchmark("Removals", () =>
                 {
                     Console.WriteLine($"Deleting {list.Size()} random quads.");
@@ -54,7 +56,7 @@ namespace DtronixCommonSamples
 
                         qt.Remove(id);
                     }
-                });
+                });*/
             }
 
 
