@@ -1,21 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
-namespace DtronixCommon.Collections;
+namespace DtronixCommon.Collections.Trees;
+
+public interface IQuad
+{
+    long Id { get; set; }
+    long X1 { get; }
+    long X2 { get; }
+    long Y1 { get; }
+    long Y2 { get; }
+}
+
 /// <summary>
 /// https://stackoverflow.com/a/48354356
 /// Review https://github.com/Appleguysnake/DragonSpace-Demo
 /// </summary>
-public class LongQuadtree
+public class QuadTree<T>
+    where T : IQuad
 {
+    private T[] items = new T[128];
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public LongQuadtree(long width, long height, int startMaxElements, int startMaxDepth)
+    public QuadTree(long width, long height, int startMaxElements, int startMaxDepth)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
@@ -33,31 +38,35 @@ public class LongQuadtree
     }
 
     // Outputs a list of elements found in the specified rectangle.
-    public long Insert(long x1, long y1, long x2, long y2)
+    public long Insert(T item)
     {
         // Insert a new element.
         var newElement = _elts.Insert();
 
+        if (newElement == items.Length)
+            Array.Resize(ref items, items.Length * 2);
+
+        items[newElement] = item;
         // Set the fields of the new element.
-        _elts.Set(newElement, _eltIdxLft, x1);
-        _elts.Set(newElement, _eltIdxTop, y1);
-        _elts.Set(newElement, _eltIdxRgt, x2);
-        _elts.Set(newElement, _eltIdxBtm, y2);
-        //_elts.Set(newElement, _eltIdxId, id);
+        _elts.Set(newElement, _eltIdxLft, item.X1);
+        _elts.Set(newElement, _eltIdxTop, item.Y1);
+        _elts.Set(newElement, _eltIdxRgt, item.X2);
+        _elts.Set(newElement, _eltIdxBtm, item.Y2);
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
+        item.Id = newElement;
         return newElement;
     }
 
     // Removes the specified element from the tree.
-    public void Remove(long element)
+    public void Remove(T element)
     {
         // Find the leaves.
-        long lft = _elts.Get(element, _eltIdxLft);
-        long top = _elts.Get(element, _eltIdxTop);
-        long rgt = _elts.Get(element, _eltIdxRgt);
-        long btm = _elts.Get(element, _eltIdxBtm);
+        long lft = _elts.Get(element.Id, _eltIdxLft);
+        long top = _elts.Get(element.Id, _eltIdxTop);
+        long rgt = _elts.Get(element.Id, _eltIdxRgt);
+        long btm = _elts.Get(element.Id, _eltIdxBtm);
         LongList leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
 
         // For each leaf node, remove the element node.
@@ -68,7 +77,7 @@ public class LongQuadtree
             // Walk the list until we find the element node.
             var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             long prevIndex = -1;
-            while (nodeIndex != -1 && _enodes.Get(nodeIndex, _enodeIdxElt) != element)
+            while (nodeIndex != -1 && _enodes.Get(nodeIndex, _enodeIdxElt) != element.Id)
             {
                 prevIndex = nodeIndex;
                 nodeIndex = _enodes.Get(nodeIndex, _enodeIdxNext);
@@ -90,7 +99,7 @@ public class LongQuadtree
         }
 
         // Remove the element.
-        _elts.Erase(element);
+        _elts.Erase(element.Id);
     }
 
     // Cleans up the tree, removing empty leaves.
@@ -192,6 +201,48 @@ public class LongQuadtree
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
+    }
+
+    public void QueryTraverse(long x1, long y1, long x2, long y2, Action<T> action)
+    {
+        var intListOut = new LongList(1);
+
+        // Find the leaves that intersect the specified query rectangle.
+        LongList leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        if (_tempSize < _elts.Size())
+        {
+            _tempSize = _elts.Size();
+            _temp = new bool[_tempSize];
+        }
+
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Size(); ++j)
+        {
+            long ndIndex = leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            long eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                long element = _enodes.Get(eltNodeIndex, _enodeIdxElt);
+                long lft = _elts.Get(element, _eltIdxLft);
+                long top = _elts.Get(element, _eltIdxTop);
+                long rgt = _elts.Get(element, _eltIdxRgt);
+                long btm = _elts.Get(element, _eltIdxBtm);
+                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    action(items[element]);
+                    _temp[element] = true;
+                }
+                eltNodeIndex = _enodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+        }
+
+        // Unmark the elements that were inserted.
+        for (int j = 0; j < intListOut.Size(); ++j)
+            _temp[intListOut.Get(j, 0)] = false;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

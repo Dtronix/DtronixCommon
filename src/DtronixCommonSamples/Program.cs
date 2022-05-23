@@ -3,14 +3,26 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using DtronixCommon.Collections.Trees;
 
 namespace DtronixCommonSamples
 {
     internal class Program
     {
+        private class MyClass : IQuad
+        {
+            public int Value1 { get; set; }
+            public int Value2 { get; set; }
+            public long Id { get; set; }
+            public long X1 { get; set; }
+            public long X2 { get; set; }
+            public long Y1 { get; set; }
+            public long Y2 { get; set; }
+        }
         static void Main(string[] args)
         {
-            var qt = new LongQuadtree(int.MaxValue, int.MaxValue, 8, 8);
+            
+            var qt = new QuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
 
             int id = 0;
             const int MinMax = 50000;
@@ -20,7 +32,7 @@ namespace DtronixCommonSamples
             var baseY = rand.Next(1, MinMax);
             var width = rand.Next(0, MinMax);
             var height = rand.Next(0, MinMax);
-            var count = rand.Next(20, 500);
+            var count = rand.Next(400, 500);
 
             Benchmark("Inserts", () =>
             {
@@ -30,33 +42,35 @@ namespace DtronixCommonSamples
                 {
                     for (int y = 0; y < count; y++)
                     {
-                        qt.Insert(baseX + x, baseY + y, baseY + y + width, baseY + y + height);
+                        qt.Insert(
+                            new MyClass()
+                            {
+                                Value1 = x,
+                                Value2 = y,
+                                X1 = baseX + x,
+                                Y1 = baseY + y,
+                                X2 = baseY + y + width,
+                                Y2 = baseY + y + height,
+                            });
                     }
                 }
             });
-
-            for (int i = 0; i < 500; i++)
+            var ids = new List<MyClass>(count * count);
+            for (int i = 0; i < 10; i++)
             {
+                ids.Clear();
 
-                
-                LongList list = null;
-                Benchmark("Removal Query", () =>
+                Benchmark("Query", () =>
                 {
-                    list = qt.Query(0, 0, long.MaxValue, long.MaxValue, -1);
+                    var list = qt.Query(0, 0, long.MaxValue, long.MaxValue, -1);
                 });
-                
-                /*
-                Benchmark("Removals", () =>
+                Benchmark("Traverse Query", () =>
                 {
-                    Console.WriteLine($"Deleting {list.Size()} random quads.");
-
-                    for (int i = 0; i < list.Size(); i++)
+                    qt.QueryTraverse(0, 0, long.MaxValue, long.MaxValue, id =>
                     {
-                        var id = list.Get(i, 0);
-
-                        qt.Remove(id);
-                    }
-                });*/
+                        ids.Add(id);
+                    });
+                });
             }
 
 
