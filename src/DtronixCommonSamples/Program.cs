@@ -1,0 +1,210 @@
+﻿using DtronixCommon.Collections;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+using DtronixCommon.Collections.Trees;
+
+namespace DtronixCommonSamples
+{
+    internal class Program
+    {
+        private class MyClass : IQuadTreeItem
+        {
+            public int Value1 { get; set; }
+            public int Value2 { get; set; }
+            int IQuadTreeItem.QuadTreeId { get; set; }
+        }
+        static void Main(string[] args)
+        {
+            
+            var qtl = new LongQuadTree<MyClass>(long.MaxValue, long.MaxValue, 8, 8);
+            var qti = new IntQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
+            var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8);
+            var qtd = new DoubleQuadTree<MyClass>(double.MaxValue, double.MaxValue, 8, 8);
+
+            int id = 0;
+            const int MinMax = 50000;
+            var rand = new Random();
+
+            var baseX = rand.Next(1, MinMax);
+            var baseY = rand.Next(1, MinMax);
+            var width = rand.Next(0, MinMax);
+            var height = rand.Next(0, MinMax);
+            var count = 500;
+
+
+            var ids = new List<MyClass>(count * count);
+            for (int i = 0; i < 2; i++)
+            {
+                Benchmark($"Inserts int {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qti.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query int", () =>
+                {
+                    qti.Query(int.MinValue, int.MinValue, int.MaxValue, int.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove int", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qti.Remove(myClass);
+                    }
+                });
+
+                Console.WriteLine();
+                Benchmark($"Inserts long {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qtl.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query long", () =>
+                {
+                    qtl.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove long", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qtl.Remove(myClass);
+                    }
+                });
+
+
+                Console.WriteLine();
+                Benchmark($"Inserts float {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qtf.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query float", () =>
+                {
+                    qtf.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove float", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qtf.Remove(myClass);
+                    }
+                });
+
+                Console.WriteLine();
+                Benchmark($"Inserts double {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qtd.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query double", () =>
+                {
+                    qtd.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove double", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qtd.Remove(myClass);
+                    }
+                });
+
+
+            }
+            
+
+            Console.ReadLine();
+        }
+
+        static void Benchmark(string name, Action action)
+        {
+            Console.WriteLine($"{name} Started...");
+            long startMemory = GC.GetTotalMemory(true);
+            var sw = Stopwatch.StartNew();
+
+            action();
+
+            var complete = sw.ElapsedMilliseconds;
+
+            long endMemory = GC.GetTotalMemory(true);
+
+            Console.WriteLine($"{name} Completed. Elapsed: {complete:N1}ms; Memory Usage :{(endMemory - startMemory) / 1024:N1}KB");
+        }
+    }
+}
