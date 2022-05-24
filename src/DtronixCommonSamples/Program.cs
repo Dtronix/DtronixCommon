@@ -17,9 +17,11 @@ namespace DtronixCommonSamples
         }
         static void Main(string[] args)
         {
-
-            var qt = new LongQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
-            var qtf = new FloatQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
+            
+            var qtl = new LongQuadTree<MyClass>(long.MaxValue, long.MaxValue, 8, 8);
+            var qti = new IntQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
+            var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8);
+            var qtd = new DoubleQuadTree<MyClass>(double.MaxValue, double.MaxValue, 8, 8);
 
             int id = 0;
             const int MinMax = 50000;
@@ -35,13 +37,50 @@ namespace DtronixCommonSamples
             var ids = new List<MyClass>(count * count);
             for (int i = 0; i < 2; i++)
             {
+                Benchmark($"Inserts int {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qti.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query int", () =>
+                {
+                    qti.Query(int.MinValue, int.MinValue, int.MaxValue, int.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove int", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qti.Remove(myClass);
+                    }
+                });
+
+                Console.WriteLine();
                 Benchmark($"Inserts long {count * count} ", () =>
                 {
                     for (int x = 0; x < count; x++)
                     {
                         for (int y = 0; y < count; y++)
                         {
-                            qt.Insert(
+                            qtl.Insert(
                                 baseX + x,
                                 baseY + y,
                                 baseY + y + width,
@@ -58,7 +97,7 @@ namespace DtronixCommonSamples
 
                 Benchmark("Query long", () =>
                 {
-                    qt.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    qtl.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
                     });
@@ -67,14 +106,13 @@ namespace DtronixCommonSamples
                 {
                     foreach (var myClass in ids)
                     {
-                        qt.Remove(myClass);
+                        qtl.Remove(myClass);
                     }
                 });
-            }
 
-            for (int i = 0; i < 2; i++)
-            {
-                Benchmark($"Inserts Float {count * count} ", () =>
+
+                Console.WriteLine();
+                Benchmark($"Inserts float {count * count} ", () =>
                 {
                     for (int x = 0; x < count; x++)
                     {
@@ -95,57 +133,62 @@ namespace DtronixCommonSamples
                 });
                 ids.Clear();
 
-                Benchmark("Query Float", () =>
+                Benchmark("Query float", () =>
                 {
                     qtf.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
                     });
                 });
-                Benchmark("Remove Float", () =>
+                Benchmark("Remove float", () =>
                 {
                     foreach (var myClass in ids)
                     {
                         qtf.Remove(myClass);
                     }
                 });
-            }
 
-
-
-
-
-
-            /*
-            id = 0;
-            Benchmark("Remove Quadrant", () =>
-            {
-                var list = qt.Query(0, 0, 100, 100, -1);
-                for (int i = 0; i < list.Size(); i++)
+                Console.WriteLine();
+                Benchmark($"Inserts double {count * count} ", () =>
                 {
-                    qt.Remove(list.Get(i, 0));
-                }
-            });
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qtd.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
 
-            Benchmark("Cleanup", () =>
-            {
-                qt.Cleanup();
-            });
+                Benchmark("Query double", () =>
+                {
+                    qtd.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove double", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qtd.Remove(myClass);
+                    }
+                });
 
-            Benchmark("QueryList", () =>
-            {
-                var list = qt.Query(0, 0, 500, 500, -1);
-            });
 
-            Benchmark("QueryList2", () =>
-            {
-                var list = qt.Query(0, 0, 500, 500, -1);
-            });
+            }
+            
 
-            Benchmark("QueryList3", () =>
-            {
-                var list = qt.Query(0, 0, 500, 500, -1);
-            });*/
             Console.ReadLine();
         }
 

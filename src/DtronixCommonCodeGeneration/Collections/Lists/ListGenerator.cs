@@ -1,4 +1,55 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
+
+namespace DtronixCommonCodeGeneration.Collections.Lists
+{
+
+    [Generator]
+    public class ListGenerator : ISourceGenerator
+    {
+        private class Config
+        {
+            public string ClassName { get; set; }
+            public string NumberType { get; set; }
+            public string Visibility { get; set; }
+        }
+
+        public void Execute(GeneratorExecutionContext context)
+        {
+            var configs = new Config[]
+            {
+                new Config()
+                {
+                    ClassName = "FloatList",
+                    NumberType = "float",
+                    Visibility = "internal"
+                },
+                new Config()
+                {
+                    ClassName = "DoubleList",
+                    NumberType = "double",
+                    Visibility = "internal"
+                },
+                new Config()
+                {
+                    ClassName = "IntList",
+                    NumberType = "int",
+                    Visibility = "public"
+                },
+                new Config()
+                {
+                    ClassName = "LongList",
+                    NumberType = "long",
+                    Visibility = "internal"
+                }
+            };
+            foreach (var config in configs)
+            {
+                var sourceBuilder = new StringBuilder(@"
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace DtronixCommon.Collections.Lists;
@@ -6,21 +57,20 @@ namespace DtronixCommon.Collections.Lists;
 /// <summary>
 /// https://stackoverflow.com/a/48354356
 /// </summary>
-internal class DoubleList
+" + config.Visibility + @" class " + config.ClassName + @"
 {
-    private double[] _data = new double[128];
+    private " + config.NumberType + @"[] _data = new " + config.NumberType + @"[128];
     private int _numFields = 0;
     private int _num = 0;
     private int _cap = 128;
     private int _freeElement = -1;
 
-
     /// <summary>
     ///Creates a new list of elements which each consist of integer fields.
     /// 'startNumFields' specifies the number of integer fields each element has.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public DoubleList(int startNumFields)
+    /// <param name=""startNumFields""></param>
+    public " + config.ClassName + @"(int startNumFields)
     {
         _numFields = startNumFields;
     }
@@ -37,11 +87,11 @@ internal class DoubleList
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
-    /// <param name="field"></param>
+    /// <param name=""n""></param>
+    /// <param name=""field""></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double Get(int n, int field)
+    public " + config.NumberType + @" Get(int n, int field)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         return _data[n * _numFields + field];
@@ -54,13 +104,13 @@ internal class DoubleList
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
-    /// <param name="field"></param>
-    /// <param name="val"></param>
-    public void Set(int n, int field, double val)
+    /// <param name=""n""></param>
+    /// <param name=""field""></param>
+    /// <param name=""value""></param>
+    public void Set(int n, int field, " + config.NumberType + @" value)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = val;
+        _data[n * _numFields + field] = value;
     }
 
     /// <summary>
@@ -88,7 +138,7 @@ internal class DoubleList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            double[] newArray = new double[newCap];
+            " + config.NumberType + @"[] newArray = new " + config.NumberType + @"[newCap];
             Array.Copy(_data, newArray, _cap);
             _data = newArray;
 
@@ -107,6 +157,19 @@ internal class DoubleList
         // Just decrement the list size.
         Debug.Assert(_num > 0);
         --_num;
+    }
+
+    public void Increment(int n, int field)
+    {
+        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
+        _data[n * _numFields + field]++;
+    }
+
+
+    public void Decrement(int n, int field)
+    {
+        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
+        _data[n * _numFields + field]--;
     }
 
     /// <summary>
@@ -135,7 +198,7 @@ internal class DoubleList
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name=""n""></param>
     public void Erase(int n)
     {
         // Push the element to the free list.
@@ -145,3 +208,17 @@ internal class DoubleList
     }
 }
 
+");
+                // inject the created source into the users compilation
+                context.AddSource(config.ClassName + ".g.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));
+            }
+
+
+        }
+
+        public void Initialize(GeneratorInitializationContext context)
+        {
+            // No initialization required for this one
+        }
+    }
+}

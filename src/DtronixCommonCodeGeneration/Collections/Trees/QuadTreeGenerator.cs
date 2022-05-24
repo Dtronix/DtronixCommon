@@ -1,42 +1,54 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#" #>
-<#@ assembly name="System.Core" #>
-<#@ import namespace="System" #>
-<#@ import namespace="System.IO" #>
-<#
-	var quadTrees = new QuadTreeOptions[]
-	{
-		new QuadTreeOptions()
-		{
-             FileName = "FloatQuadTree.cs",
-             ClassName = "FloatQuadTree",
-             MainListClass = "FloatList",
-             MainNumberType = "float",
-		},
-		new QuadTreeOptions()
-		{
-			FileName = "LongQuadTree.cs",
-			ClassName = "LongQuadTree",
-			MainListClass = "LongList",
-			MainNumberType = "long",
-		},
-		new QuadTreeOptions()
-		{
-			FileName = "IntQuadTree.cs",
-			ClassName = "IntQuadTree",
-			MainListClass = "IntList",
-			MainNumberType = "int",
-		},
-		new QuadTreeOptions()
-		{
-			FileName = "DoubleQuadTree.cs",
-			ClassName = "DoubleQuadTree",
-			MainListClass = "DoubleList",
-			MainNumberType = "double",
-		}
-	};
-	foreach (var quadTree in quadTrees)
-	{
-#>
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
+
+namespace DtronixCommonCodeGeneration.Collections.Trees
+{
+
+    [Generator]
+    public class QuadTreeGenerator : ISourceGenerator
+    {
+        private class Config
+        {
+            public string ClassName { get; set; }
+            public string MainListClass { get; set; }
+            public string NumberType { get; set; }
+        }
+
+        public void Execute(GeneratorExecutionContext context)
+        {
+            var quadTrees = new Config[]
+            {
+                new Config()
+                {
+                    ClassName = "FloatQuadTree",
+                    MainListClass = "FloatList",
+                    NumberType = "float",
+                },
+                new Config()
+                {
+                    ClassName = "LongQuadTree",
+                    MainListClass = "LongList",
+                    NumberType = "long",
+                },
+                new Config()
+                {
+                    ClassName = "IntQuadTree",
+                    MainListClass = "IntList",
+                    NumberType = "int",
+                },
+                new Config()
+                {
+                    ClassName = "DoubleQuadTree",
+                    MainListClass = "DoubleList",
+                    NumberType = "double",
+                }
+            };
+            foreach (var config in quadTrees)
+            {
+                var sourceBuilder = new StringBuilder(@"
 using System.Runtime.CompilerServices;
 using DtronixCommon.Collections.Lists;
 
@@ -44,7 +56,7 @@ namespace DtronixCommon.Collections.Trees;
 
 /// <summary>
 /// </summary>
-public class <#=quadTree.ClassName#><T>
+public class " + config.ClassName + @"<T>
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -73,7 +85,7 @@ public class <#=quadTree.ClassName#><T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private <#=quadTree.MainListClass#> _eleBounds = new <#=quadTree.MainListClass#>(_eleBoundsItems);
+    private " + config.MainListClass + @" _eleBounds = new " + config.MainListClass + @"(_eleBoundsItems);
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -116,10 +128,10 @@ public class <#=quadTree.ClassName#><T>
     private int _tempSize = 0;
 
     // Stores the quadtree extents.
-    private <#=quadTree.MainNumberType#> _rootMx;
-    private <#=quadTree.MainNumberType#> _rootMy;
-    private <#=quadTree.MainNumberType#> _rootSx;
-    private <#=quadTree.MainNumberType#> _rootSy;
+    private " + config.NumberType + @" _rootMx;
+    private " + config.NumberType + @" _rootMy;
+    private " + config.NumberType + @" _rootSx;
+    private " + config.NumberType + @" _rootSy;
 
     // Maximum allowed elements in a leaf before the leaf is subdivided/split unless
     // the leaf is at the maximum allowed tree depth.
@@ -130,7 +142,7 @@ public class <#=quadTree.ClassName#><T>
 
     private T?[] items = new T[128];
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public <#=quadTree.ClassName#>(<#=quadTree.MainNumberType#> width, <#=quadTree.MainNumberType#> height, int startMaxElements, int startMaxDepth)
+    public " + config.ClassName + @"(" + config.NumberType + @" width, " + config.NumberType + @" height, int startMaxElements, int startMaxDepth)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
@@ -148,7 +160,7 @@ public class <#=quadTree.ClassName#><T>
     }
 
     // Outputs a list of elements found in the specified rectangle.
-    public int Insert(<#=quadTree.MainNumberType#> x1, <#=quadTree.MainNumberType#> y1, <#=quadTree.MainNumberType#> x2, <#=quadTree.MainNumberType#> y2, T item)
+    public int Insert(" + config.NumberType + @" x1, " + config.NumberType + @" y1, " + config.NumberType + @" x2, " + config.NumberType + @" y2, T item)
     {
         // Insert a new element.
         var newElement = _eleBounds.Insert();
@@ -272,19 +284,19 @@ public class <#=quadTree.ClassName#><T>
     }
 
     public IntList Query(
-        <#=quadTree.MainNumberType#> x1,
-        <#=quadTree.MainNumberType#> y1,
-        <#=quadTree.MainNumberType#> x2, 
-        <#=quadTree.MainNumberType#> y2)
+        " + config.NumberType + @" x1,
+        " + config.NumberType + @" y1,
+        " + config.NumberType + @" x2, 
+        " + config.NumberType + @" y2)
     {
         return Query(x1, y1, x2, y2);
     }
 
     public IntList Query(
-        <#=quadTree.MainNumberType#> x1,
-        <#=quadTree.MainNumberType#> y1,
-        <#=quadTree.MainNumberType#> x2,
-        <#=quadTree.MainNumberType#> y2,
+        " + config.NumberType + @" x1,
+        " + config.NumberType + @" y1,
+        " + config.NumberType + @" x2,
+        " + config.NumberType + @" y2,
         Action<T>? action, 
         CancellationToken cancellationToken = default)
     {
@@ -332,20 +344,20 @@ public class <#=quadTree.ClassName#><T>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        in <#=quadTree.MainNumberType#> l1,
-        in <#=quadTree.MainNumberType#> t1,
-        in <#=quadTree.MainNumberType#> r1,
-        in <#=quadTree.MainNumberType#> b1,
-        in <#=quadTree.MainNumberType#> l2, 
-        in <#=quadTree.MainNumberType#> t2,
-        in <#=quadTree.MainNumberType#> r2,
-        in <#=quadTree.MainNumberType#> b2)
+        in " + config.NumberType + @" l1,
+        in " + config.NumberType + @" t1,
+        in " + config.NumberType + @" r1,
+        in " + config.NumberType + @" b1,
+        in " + config.NumberType + @" l2, 
+        in " + config.NumberType + @" t2,
+        in " + config.NumberType + @" r2,
+        in " + config.NumberType + @" b2)
     {
         return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void PushNode(<#=quadTree.MainListClass#> nodes, int ndIndex, int ndDepth, <#=quadTree.MainNumberType#> ndMx, <#=quadTree.MainNumberType#> ndMy, <#=quadTree.MainNumberType#> ndSx, <#=quadTree.MainNumberType#> ndSy)
+    private static void PushNode(" + config.MainListClass + @" nodes, int ndIndex, int ndDepth, " + config.NumberType + @" ndMx, " + config.NumberType + @" ndMy, " + config.NumberType + @" ndSx, " + config.NumberType + @" ndSy)
     {
         var backIdx = nodes.PushBack();
         nodes.Set(backIdx, _ndIdxMx, ndMx);
@@ -356,20 +368,20 @@ public class <#=quadTree.ClassName#><T>
         nodes.Set(backIdx, _ndIdxDepth, ndDepth);
     }
 
-    private <#=quadTree.MainListClass#> find_leaves(
+    private " + config.MainListClass + @" find_leaves(
         int node, 
         int depth,
-        <#=quadTree.MainNumberType#> mx,
-        <#=quadTree.MainNumberType#> my,
-        <#=quadTree.MainNumberType#> sx, 
-        <#=quadTree.MainNumberType#> sy,
-        <#=quadTree.MainNumberType#> lft,
-        <#=quadTree.MainNumberType#> top,
-        <#=quadTree.MainNumberType#> rgt, 
-        <#=quadTree.MainNumberType#> btm)
+        " + config.NumberType + @" mx,
+        " + config.NumberType + @" my,
+        " + config.NumberType + @" sx, 
+        " + config.NumberType + @" sy,
+        " + config.NumberType + @" lft,
+        " + config.NumberType + @" top,
+        " + config.NumberType + @" rgt, 
+        " + config.NumberType + @" btm)
     {
-        var leaves = new <#=quadTree.MainListClass#>(_ndNum);
-        var toProcess = new <#=quadTree.MainListClass#>(_ndNum);
+        var leaves = new " + config.MainListClass + @"(_ndNum);
+        var toProcess = new " + config.MainListClass + @"(_ndNum);
         PushNode(toProcess, node, depth, mx, my, sx, sy);
 
         while (toProcess.Size() > 0)
@@ -390,8 +402,8 @@ public class <#=quadTree.ClassName#><T>
             {
                 // Otherwise push the children that intersect the rectangle.
                 int fc = _nodes.Get(ndIndex, _nodeIdxFc);
-                <#=quadTree.MainNumberType#> hx = ndSx / 2, hy = ndSy / 2;
-                <#=quadTree.MainNumberType#> l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
+                " + config.NumberType + @" hx = ndSx / 2, hy = ndSy / 2;
+                " + config.NumberType + @" l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
 
                 if (top <= ndMy)
                 {
@@ -412,7 +424,7 @@ public class <#=quadTree.ClassName#><T>
         return leaves;
     }
 
-    private void node_insert(int index, int depth, <#=quadTree.MainNumberType#> mx, <#=quadTree.MainNumberType#> my, <#=quadTree.MainNumberType#> sx, <#=quadTree.MainNumberType#> sy, int element)
+    private void node_insert(int index, int depth, " + config.NumberType + @" mx, " + config.NumberType + @" my, " + config.NumberType + @" sx, " + config.NumberType + @" sy, int element)
     {
         // Find the leaves and insert the element to all the leaves found.
         var lft = _eleBounds.Get(element, _eltIdxLft);
@@ -433,7 +445,7 @@ public class <#=quadTree.ClassName#><T>
         }
     }
 
-    private void leaf_insert(int node, int depth, <#=quadTree.MainNumberType#> mx, <#=quadTree.MainNumberType#> my, <#=quadTree.MainNumberType#> sx, <#=quadTree.MainNumberType#> sy, int element)
+    private void leaf_insert(int node, int depth, " + config.NumberType + @" mx, " + config.NumberType + @" my, " + config.NumberType + @" sx, " + config.NumberType + @" sy, int element)
     {
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
@@ -485,26 +497,17 @@ public class <#=quadTree.ClassName#><T>
             _nodes.Increment(node, _nodeIdxNum);
         }
     }
+}");
+                // inject the created source into the users compilation
+                context.AddSource(config.ClassName + ".g.cs", SourceText.From(sourceBuilder.ToString(), Encoding.UTF8));
+            }
+
+
+        }
+
+        public void Initialize(GeneratorInitializationContext context)
+        {
+            // No initialization required for this one
+        }
+    }
 }
-<#
-		// End of file.
-		SaveOutput(quadTree.FileName);
-	}
-#>
-<#+
-	private void SaveOutput(string outputFileName) {
-		string templateDirectory = Path.GetDirectoryName(Host.TemplateFile);
-		string outputFilePath = Path.Combine(templateDirectory, outputFileName);
-		File.WriteAllText(outputFilePath, this.GenerationEnvironment.ToString()); 
-		this.GenerationEnvironment.Remove(0, this.GenerationEnvironment.Length);
-	}
-
-	private class QuadTreeOptions
-	{
-		public string FileName { get; set; }
-		public string ClassName { get; set; }
-		public string MainListClass { get; set; }
-		public string MainNumberType { get; set; }
-	}
-
-#>
