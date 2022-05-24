@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
-namespace DtronixCommon.Collections;
+namespace DtronixCommon.Collections.Lists;
 
 /// <summary>
 /// https://stackoverflow.com/a/48354356
 /// </summary>
-public class IntList
+internal class LongList
 {
-    private int[] _data = new int[128];
+    private long[] _data = new long[128];
     private int _numFields = 0;
     private int _num = 0;
     private int _cap = 128;
@@ -24,7 +20,7 @@ public class IntList
     /// 'startNumFields' specifies the number of integer fields each element has.
     /// </summary>
     /// <param name="startNumFields"></param>
-    public IntList(int startNumFields)
+    public LongList(int startNumFields)
     {
         _numFields = startNumFields;
     }
@@ -44,10 +40,16 @@ public class IntList
     /// <param name="n"></param>
     /// <param name="field"></param>
     /// <returns></returns>
-    public int Get(int n, int field)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public long Get(int n, int field)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         return _data[n * _numFields + field];
+    }
+
+    public int GetInt(int n, int field)
+    {
+        return (int)Get(n, field);
     }
 
     /// <summary>
@@ -56,7 +58,7 @@ public class IntList
     /// <param name="n"></param>
     /// <param name="field"></param>
     /// <param name="val"></param>
-    public void Set(int n, int field, int val)
+    public void Set(int n, int field, long val)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         _data[n * _numFields + field] = val;
@@ -87,7 +89,7 @@ public class IntList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            int[] newArray = new int[newCap];
+            long[] newArray = new long[newCap];
             Array.Copy(_data, newArray, _cap);
             _data = newArray;
 
@@ -121,7 +123,7 @@ public class IntList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = _data[pos];
+            _freeElement = (int)_data[pos];
 
             // Return the free index.
             return index;

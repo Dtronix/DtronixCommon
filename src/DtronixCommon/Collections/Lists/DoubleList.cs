@@ -1,19 +1,29 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-namespace DtronixCommon.Collections.Trees;
+namespace DtronixCommon.Collections.Lists;
 
-
-public class GenericList<T>
-    where T : class
+/// <summary>
+/// https://stackoverflow.com/a/48354356
+/// </summary>
+internal class DoubleList
 {
-    private const int  InitialSize = 128;
-    private T[] _data = new T[InitialSize];
+    private double[] _data = new double[128];
+    private int _numFields = 0;
     private int _num = 0;
     private int _cap = 128;
     private int _freeElement = -1;
-    private int[] _freeElements = new int[InitialSize];
 
+
+    /// <summary>
+    ///Creates a new list of elements which each consist of integer fields.
+    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// </summary>
+    /// <param name="startNumFields"></param>
+    public DoubleList(int startNumFields)
+    {
+        _numFields = startNumFields;
+    }
 
     /// <summary>
     /// Returns the number of elements in the list.
@@ -27,25 +37,30 @@ public class GenericList<T>
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="index"></param>
+    /// <param name="n"></param>
     /// <param name="field"></param>
     /// <returns></returns>
-    public T Get(int index)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public double Get(int n, int field)
     {
-        Debug.Assert(index >= 0 && index < _num);
-        return Unsafe.As<T>(_data[index]);
+        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
+        return _data[n * _numFields + field];
     }
 
+    public int GetInt(int n, int field)
+    {
+        return (int)Get(n, field);
+    }
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="index"></param>
+    /// <param name="n"></param>
     /// <param name="field"></param>
-    /// <param name="value"></param>
-    public void Set(int index, T value)
+    /// <param name="val"></param>
+    public void Set(int n, int field, double val)
     {
-        Debug.Assert(index >= 0 && index < _num);
-        _data[index] = value;
+        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
+        _data[n * _numFields + field] = val;
     }
 
     /// <summary>
@@ -55,7 +70,6 @@ public class GenericList<T>
     {
         _num = 0;
         _freeElement = -1;
-        _freeElements = new int[InitialSize];
     }
 
     /// <summary>
@@ -64,7 +78,7 @@ public class GenericList<T>
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = _num + 1;
+        int newPos = (_num + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -74,8 +88,8 @@ public class GenericList<T>
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            object[] newArray = new object[newCap];
-            Array.Copy(_data, 0, newArray, 0, _cap);
+            double[] newArray = new double[newCap];
+            Array.Copy(_data, newArray, _cap);
             _data = newArray;
 
             // Set the old capacity to the new capacity.
@@ -105,8 +119,10 @@ public class GenericList<T>
         if (_freeElement != -1)
         {
             int index = _freeElement;
+            int pos = index * _numFields;
+
             // Set the free index to the next free index.
-            _freeElement = (int)_data[index];
+            _freeElement = (int)_data[pos];
 
             // Return the free index.
             return index;
@@ -116,13 +132,6 @@ public class GenericList<T>
         return PushBack();
     }
 
-    public int Insert(T value)
-    {
-        var insertId = Insert();
-        Set(insertId, value);
-        return insertId;
-    }
-
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
@@ -130,7 +139,8 @@ public class GenericList<T>
     public void Erase(int n)
     {
         // Push the element to the free list.
-        _data[n] = _freeElement;
+        int pos = n * _numFields;
+        _data[pos] = _freeElement;
         _freeElement = n;
     }
 }

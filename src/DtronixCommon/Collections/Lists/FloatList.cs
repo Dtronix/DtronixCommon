@@ -1,17 +1,18 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
-namespace DtronixCommon.Collections.Trees;
+namespace DtronixCommon.Collections.Lists;
 
 /// <summary>
 /// https://stackoverflow.com/a/48354356
 /// </summary>
-public class LongList
+internal class FloatList
 {
-    private long[] _data = new long[128];
+    private float[] _data = new float[128];
     private int _numFields = 0;
-    private long _num = 0;
-    private long _cap = 128;
-    private long _freeElement = -1;
+    private int _num = 0;
+    private int _cap = 128;
+    private int _freeElement = -1;
 
 
     /// <summary>
@@ -19,7 +20,7 @@ public class LongList
     /// 'startNumFields' specifies the number of integer fields each element has.
     /// </summary>
     /// <param name="startNumFields"></param>
-    public LongList(int startNumFields)
+    public FloatList(int startNumFields)
     {
         _numFields = startNumFields;
     }
@@ -28,7 +29,7 @@ public class LongList
     /// Returns the number of elements in the list.
     /// </summary>
     /// <returns></returns>
-    public long Size()
+    public int Size()
     {
         return _num;
     }
@@ -39,19 +40,24 @@ public class LongList
     /// <param name="n"></param>
     /// <param name="field"></param>
     /// <returns></returns>
-    public long Get(long n, long field)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public float Get(int n, int field)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         return _data[n * _numFields + field];
     }
 
+    public int GetInt(int n, int field)
+    {
+        return (int)Get(n, field);
+    }
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
     /// <param name="n"></param>
     /// <param name="field"></param>
     /// <param name="val"></param>
-    public void Set(long n, long field, long val)
+    public void Set(int n, int field, float val)
     {
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         _data[n * _numFields + field] = val;
@@ -70,19 +76,19 @@ public class LongList
     /// Inserts an element to the back of the list and returns an index to it.
     /// </summary>
     /// <returns></returns>
-    public long PushBack()
+    public int PushBack()
     {
-        long newPos = (_num + 1) * _numFields;
+        int newPos = (_num + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
         if (newPos > _cap)
         {
             // Use double the size for the new capacity.
-            long newCap = newPos * 2;
+            int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            long[] newArray = new long[newCap];
+            float[] newArray = new float[newCap];
             Array.Copy(_data, newArray, _cap);
             _data = newArray;
 
@@ -107,16 +113,16 @@ public class LongList
     /// Inserts an element to a vacant position in the list and returns an index to it.
     /// </summary>
     /// <returns></returns>
-    public long Insert()
+    public int Insert()
     {
         // If there's a free index in the free list, pop that and use it.
         if (_freeElement != -1)
         {
-            long index = _freeElement;
-            long pos = index * _numFields;
+            int index = _freeElement;
+            int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = _data[pos];
+            _freeElement = (int)_data[pos];
 
             // Return the free index.
             return index;
@@ -130,10 +136,10 @@ public class LongList
     /// Removes the nth element in the list.
     /// </summary>
     /// <param name="n"></param>
-    public void Erase(long n)
+    public void Erase(int n)
     {
         // Push the element to the free list.
-        long pos = n * _numFields;
+        int pos = n * _numFields;
         _data[pos] = _freeElement;
         _freeElement = n;
     }

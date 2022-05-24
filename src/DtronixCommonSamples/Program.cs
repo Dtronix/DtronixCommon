@@ -9,20 +9,17 @@ namespace DtronixCommonSamples
 {
     internal class Program
     {
-        private class MyClass : IQuad
+        private class MyClass : IQuadTreeItem
         {
             public int Value1 { get; set; }
             public int Value2 { get; set; }
-            public long Id { get; set; }
-            public long X1 { get; set; }
-            public long X2 { get; set; }
-            public long Y1 { get; set; }
-            public long Y2 { get; set; }
+            int IQuadTreeItem.QuadTreeId { get; set; }
         }
         static void Main(string[] args)
         {
-            
-            var qt = new QuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
+
+            var qt = new LongQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
+            var qtf = new FloatQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
 
             int id = 0;
             const int MinMax = 50000;
@@ -32,46 +29,91 @@ namespace DtronixCommonSamples
             var baseY = rand.Next(1, MinMax);
             var width = rand.Next(0, MinMax);
             var height = rand.Next(0, MinMax);
-            var count = rand.Next(400, 500);
+            var count = 500;
 
-            Benchmark("Inserts", () =>
-            {
-                Console.WriteLine($"Writing {count * count} random quads.");
 
-                for (int x = 0; x < count; x++)
-                {
-                    for (int y = 0; y < count; y++)
-                    {
-                        qt.Insert(
-                            new MyClass()
-                            {
-                                Value1 = x,
-                                Value2 = y,
-                                X1 = baseX + x,
-                                Y1 = baseY + y,
-                                X2 = baseY + y + width,
-                                Y2 = baseY + y + height,
-                            });
-                    }
-                }
-            });
             var ids = new List<MyClass>(count * count);
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 2; i++)
             {
+                Benchmark($"Inserts long {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qt.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
                 ids.Clear();
 
-                Benchmark("Query", () =>
+                Benchmark("Query long", () =>
                 {
-                    var list = qt.Query(0, 0, long.MaxValue, long.MaxValue, -1);
-                });
-                Benchmark("Traverse Query", () =>
-                {
-                    qt.QueryTraverse(0, 0, long.MaxValue, long.MaxValue, id =>
+                    qt.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
                     });
                 });
+                Benchmark("Remove long", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qt.Remove(myClass);
+                    }
+                });
             }
+
+            for (int i = 0; i < 2; i++)
+            {
+                Benchmark($"Inserts Float {count * count} ", () =>
+                {
+                    for (int x = 0; x < count; x++)
+                    {
+                        for (int y = 0; y < count; y++)
+                        {
+                            qtf.Insert(
+                                baseX + x,
+                                baseY + y,
+                                baseY + y + width,
+                                baseY + y + height,
+                                new MyClass()
+                                {
+                                    Value1 = x,
+                                    Value2 = y,
+                                });
+                        }
+                    }
+                });
+                ids.Clear();
+
+                Benchmark("Query Float", () =>
+                {
+                    qtf.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
+                    {
+                        ids.Add(id);
+                    });
+                });
+                Benchmark("Remove Float", () =>
+                {
+                    foreach (var myClass in ids)
+                    {
+                        qtf.Remove(myClass);
+                    }
+                });
+            }
+
+
+
+
 
 
             /*

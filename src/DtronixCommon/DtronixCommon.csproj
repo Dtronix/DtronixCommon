@@ -26,13 +26,10 @@
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
 	<ItemGroup>
-	  <Compile Remove="Collections\Trees\GenericList.cs" />
-	</ItemGroup>
-	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+		<PackageReference Include="Mono.TextTemplating" Version="2.2.1" />
 	</ItemGroup>
 	<ItemGroup>
-		<None Include="Collections\Trees\GenericList.cs" />
 		<None Include="icon.png">
 			<Pack>True</Pack>
 			<PackagePath></PackagePath>
@@ -42,5 +39,21 @@
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 			<_Parameter1>DtronixCommon.Tests</_Parameter1>
 		</AssemblyAttribute>
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="Collections\Trees\QuadTrees.tt">
+	    <Generator>TextTemplatingFileGenerator</Generator>
+	    <LastGenOutput>QuadTrees.cs</LastGenOutput>
+	  </None>
+	</ItemGroup>
+	<ItemGroup>
+	  <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Compile Update="Collections\Trees\QuadTrees.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>QuadTrees.tt</DependentUpon>
+	  </Compile>
 	</ItemGroup>
 </Project>
