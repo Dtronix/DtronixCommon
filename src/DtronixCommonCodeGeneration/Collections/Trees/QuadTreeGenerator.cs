@@ -327,12 +327,17 @@ public class " + config.ClassName + @"<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
+                    if(cancellationToken.IsCancellationRequested)
+                        break;
+
                     intListOut.Set(intListOut.PushBack(), 0, element);
                     action?.Invoke(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
+            if(cancellationToken.IsCancellationRequested)
+                break;
         }
 
         // Unmark the elements that were inserted.
