@@ -101,6 +101,7 @@ namespace DtronixCommon.Collections.Lists;
     {
         return (int)Get(n, field);
     }
+
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
@@ -164,7 +165,6 @@ namespace DtronixCommon.Collections.Lists;
         Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
         _data[n * _numFields + field]++;
     }
-
 
     public void Decrement(int n, int field)
     {

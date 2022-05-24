@@ -40,9 +40,8 @@
 		</AssemblyAttribute>
 	</ItemGroup>
 	<ItemGroup>
-	  <ProjectReference Include="..\DtronixCommonCodeGeneration\DtronixCommonCodeGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Collections\Lists\" />
+	  <ProjectReference Include="..\DtronixCommonCodeGeneration\DtronixCommonCodeGeneration.csproj"
+	                    PrivateAssets="All"
+	                    OutputItemType="Analyzer"/>
 	</ItemGroup>
 </Project>

@@ -141,7 +141,25 @@ public class " + config.ClassName + @"<T>
     private int _maxDepth;
 
     private T?[] items = new T[128];
-    // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
+
+
+    /// <summary>
+    /// Creates a quadtree with the specified width, height.  Sets the max elements and depth at 8.
+    /// </summary>
+    /// <param name=""width"">Sets the maximum width of the tree.</param>
+    /// <param name=""height"">Sets the maximum height of the tree.</param>
+        public " + config.ClassName + @"(" + config.NumberType + @" width, " + config.NumberType + @" height)
+        : this(width, height, 8, 8)
+    {
+    }
+
+    /// <summary>
+    /// Creates a quadtree with the specified width, height.
+    /// </summary>
+    /// <param name=""width"">Sets the maximum width of the tree.</param>
+    /// <param name=""height"">Sets the maximum height of the tree.</param>
+    /// <param name=""startMaxElements"">Sta</param>
+    /// <param name=""startMaxDepth"">Specifies the maximum depth before sub-dividing the tree.</param>
     public " + config.ClassName + @"(" + config.NumberType + @" width, " + config.NumberType + @" height, int startMaxElements, int startMaxDepth)
     {
         _maxElements = startMaxElements;
@@ -159,8 +177,16 @@ public class " + config.ClassName + @"<T>
         _rootSy = _rootMy;
     }
 
-    // Outputs a list of elements found in the specified rectangle.
-    public int Insert(" + config.NumberType + @" x1, " + config.NumberType + @" y1, " + config.NumberType + @" x2, " + config.NumberType + @" y2, T item)
+    /// <summary>
+    /// Inserts an item into the quadtree.
+    /// </summary>
+    /// <param name=""x1"">Minim X coordinate.</param>
+    /// <param name=""y1"">Minim Y coordinate.</param>
+    /// <param name=""x2"">Maximum X coordinate.</param>
+    /// <param name=""y2"">Maximum Y coordinate.</param>
+    /// <param name=""item"">Item to insert into the quadtree.</param>
+    /// <returns>Index of the new item index in the quadtree.</returns>
+                public int Insert(" + config.NumberType + @" x1, " + config.NumberType + @" y1, " + config.NumberType + @" x2, " + config.NumberType + @" y2, T item)
     {
         // Insert a new element.
         var newElement = _eleBounds.Insert();
@@ -181,7 +207,10 @@ public class " + config.ClassName + @"<T>
         return newElement;
     }
 
-    // Removes the specified element from the tree.
+    /// <summary>
+    /// Removes the specified element from the tree.
+    /// </summary>
+    /// <param name=""element"">Element to remove</param>
     public void Remove(T element)
     {
         // Find the leaves.
@@ -227,71 +256,35 @@ public class " + config.ClassName + @"<T>
 
     }
 
-    // Cleans up the tree, removing empty leaves.
-    public void Cleanup()
-    {
-        IntList toProcess = new IntList(1);
-
-        // Only process the root if it's not a leaf.
-        if (_nodes.Get(0, _nodeIdxNum) == -1)
-        {
-            // Push the root index to the stack.
-            toProcess.Set(toProcess.PushBack(), 0, 0);
-        }
-
-        while (toProcess.Size() > 0)
-        {
-            // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
-            int fc = _nodes.Get(node, _nodeIdxFc);
-            int numEmptyLeaves = 0;
-            toProcess.PopBack();
-
-            // Loop through the children.
-            for (int j = 0; j < 4; ++j)
-            {
-                int child = fc + j;
-
-                // Increment empty leaf count if the child is an empty 
-                // leaf. Otherwise if the child is a branch, add it to
-                // the stack to be processed in the next iteration.
-                if (_nodes.Get(child, _nodeIdxNum) == 0)
-                    ++numEmptyLeaves;
-                else if (_nodes.Get(child, _nodeIdxNum) == -1)
-                {
-                    // Push the child index to the stack.
-                    toProcess.Set(toProcess.PushBack(), 0, child);
-                }
-            }
-
-            // If all the children were empty leaves, remove them and 
-            // make this node the new empty leaf.
-            if (numEmptyLeaves == 4)
-            {
-                // Remove all 4 children in reverse order so that they 
-                // can be reclaimed on subsequent insertions in proper
-                // order.
-                _nodes.Erase(fc + 3);
-                _nodes.Erase(fc + 2);
-                _nodes.Erase(fc + 1);
-                _nodes.Erase(fc + 0);
-
-                // Make this node the new empty leaf.
-                _nodes.Set(node, _nodeIdxFc, -1);
-                _nodes.Set(node, _nodeIdxNum, 0);
-            }
-        }
-    }
-
+    /// <summary>
+    /// Queries the quadtree for all the elements intersecting and encompassed in the passed bounds.
+    /// </summary>
+    /// <param name=""x1"">Minim X coordinate.</param>
+    /// <param name=""y1"">Minim Y coordinate.</param>
+    /// <param name=""x2"">Maximum X coordinate.</param>
+    /// <param name=""y2"">Maximum Y coordinate.</param>
+    /// <param name=""action"">Action to execute on each found element.</param>
+    /// <param name=""cancellationToken"">Cancellation token to cancel the query.</param>
+    /// <returns>Integer list of the ids of the elements contained in the query.</returns>
     public IntList Query(
         " + config.NumberType + @" x1,
         " + config.NumberType + @" y1,
         " + config.NumberType + @" x2, 
         " + config.NumberType + @" y2)
     {
-        return Query(x1, y1, x2, y2);
+        return Query(x1, y1, x2, y2, null, default);
     }
 
+    /// <summary>
+    /// Queries the quadtree for all the elements intersecting and encompassed in the passed bounds.
+    /// </summary>
+    /// <param name=""x1"">Minim X coordinate.</param>
+    /// <param name=""y1"">Minim Y coordinate.</param>
+    /// <param name=""x2"">Maximum X coordinate.</param>
+    /// <param name=""y2"">Maximum Y coordinate.</param>
+    /// <param name=""action"">Action to execute on each found element.</param>
+    /// <param name=""cancellationToken"">Cancellation token to cancel the query.</param>
+    /// <returns>Integer list of the ids of the elements contained in the query.</returns>
     public IntList Query(
         " + config.NumberType + @" x1,
         " + config.NumberType + @" y1,
@@ -345,6 +338,64 @@ public class " + config.ClassName + @"<T>
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
+    }
+
+    /// <summary>
+    /// Cleans up the tree, removing empty leaves.
+    /// </summary>
+    public void Cleanup()
+    {
+        IntList toProcess = new IntList(1);
+
+        // Only process the root if it's not a leaf.
+        if (_nodes.Get(0, _nodeIdxNum) == -1)
+        {
+            // Push the root index to the stack.
+            toProcess.Set(toProcess.PushBack(), 0, 0);
+        }
+
+        while (toProcess.Size() > 0)
+        {
+            // Pop a node from the stack.
+            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
+            int fc = _nodes.Get(node, _nodeIdxFc);
+            int numEmptyLeaves = 0;
+            toProcess.PopBack();
+
+            // Loop through the children.
+            for (int j = 0; j < 4; ++j)
+            {
+                int child = fc + j;
+
+                // Increment empty leaf count if the child is an empty 
+                // leaf. Otherwise if the child is a branch, add it to
+                // the stack to be processed in the next iteration.
+                if (_nodes.Get(child, _nodeIdxNum) == 0)
+                    ++numEmptyLeaves;
+                else if (_nodes.Get(child, _nodeIdxNum) == -1)
+                {
+                    // Push the child index to the stack.
+                    toProcess.Set(toProcess.PushBack(), 0, child);
+                }
+            }
+
+            // If all the children were empty leaves, remove them and 
+            // make this node the new empty leaf.
+            if (numEmptyLeaves == 4)
+            {
+                // Remove all 4 children in reverse order so that they 
+                // can be reclaimed on subsequent insertions in proper
+                // order.
+                _nodes.Erase(fc + 3);
+                _nodes.Erase(fc + 2);
+                _nodes.Erase(fc + 1);
+                _nodes.Erase(fc + 0);
+
+                // Make this node the new empty leaf.
+                _nodes.Set(node, _nodeIdxFc, -1);
+                _nodes.Set(node, _nodeIdxNum, 0);
+            }
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

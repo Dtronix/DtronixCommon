@@ -11,13 +11,10 @@ namespace DtronixCommonSamples
     {
         private class MyClass : IQuadTreeItem
         {
-            public int Value1 { get; set; }
-            public int Value2 { get; set; }
             int IQuadTreeItem.QuadTreeId { get; set; }
         }
         static void Main(string[] args)
         {
-            
             var qtl = new LongQuadTree<MyClass>(long.MaxValue, long.MaxValue, 8, 8);
             var qti = new IntQuadTree<MyClass>(int.MaxValue, int.MaxValue, 8, 8);
             var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8);
@@ -39,20 +36,16 @@ namespace DtronixCommonSamples
             {
                 Benchmark($"Inserts int {count * count} ", () =>
                 {
-                    for (int x = 0; x < count; x++)
+                    for (int x = 0; x < count * 10; x += 10)
                     {
-                        for (int y = 0; y < count; y++)
+                        for (int y = 0; y < count * 10; y += 10)
                         {
                             qti.Insert(
                                 baseX + x,
                                 baseY + y,
                                 baseY + y + width,
                                 baseY + y + height,
-                                new MyClass()
-                                {
-                                    Value1 = x,
-                                    Value2 = y,
-                                });
+                                new MyClass());
                         }
                     }
                 });
@@ -76,20 +69,16 @@ namespace DtronixCommonSamples
                 Console.WriteLine();
                 Benchmark($"Inserts long {count * count} ", () =>
                 {
-                    for (int x = 0; x < count; x++)
+                    for (int x = 0; x < count * 10; x += 10)
                     {
-                        for (int y = 0; y < count; y++)
+                        for (int y = 0; y < count * 10; y += 10)
                         {
-                            qtl.Insert(
+                            qti.Insert(
                                 baseX + x,
                                 baseY + y,
                                 baseY + y + width,
                                 baseY + y + height,
-                                new MyClass()
-                                {
-                                    Value1 = x,
-                                    Value2 = y,
-                                });
+                                new MyClass());
                         }
                     }
                 });
@@ -114,20 +103,16 @@ namespace DtronixCommonSamples
                 Console.WriteLine();
                 Benchmark($"Inserts float {count * count} ", () =>
                 {
-                    for (int x = 0; x < count; x++)
+                    for (int x = 0; x < count * 10; x += 10)
                     {
-                        for (int y = 0; y < count; y++)
+                        for (int y = 0; y < count * 10; y += 10)
                         {
-                            qtf.Insert(
+                            qti.Insert(
                                 baseX + x,
                                 baseY + y,
                                 baseY + y + width,
                                 baseY + y + height,
-                                new MyClass()
-                                {
-                                    Value1 = x,
-                                    Value2 = y,
-                                });
+                                new MyClass());
                         }
                     }
                 });
@@ -151,20 +136,16 @@ namespace DtronixCommonSamples
                 Console.WriteLine();
                 Benchmark($"Inserts double {count * count} ", () =>
                 {
-                    for (int x = 0; x < count; x++)
+                    for (int x = 0; x < count * 10; x += 10)
                     {
-                        for (int y = 0; y < count; y++)
+                        for (int y = 0; y < count * 10; y += 10)
                         {
-                            qtd.Insert(
+                            qti.Insert(
                                 baseX + x,
                                 baseY + y,
                                 baseY + y + width,
                                 baseY + y + height,
-                                new MyClass()
-                                {
-                                    Value1 = x,
-                                    Value2 = y,
-                                });
+                                new MyClass());
                         }
                     }
                 });
