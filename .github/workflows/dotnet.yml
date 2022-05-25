@@ -30,7 +30,7 @@ jobs:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
     - name: Tool Setup
-      run: dotnet tool restore
+      run: dotnet tool restore --tool-manifest "src/.config/dotnet-tools.json"
       
     - name: Build
       run: dotnet build src/DtronixCommon -c Release
