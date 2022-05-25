@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net5.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>0.4.0.0</Version>
+		<Version>0.4.2.0</Version>
 		<Nullable>enable</Nullable>
 		<LangVersion>10</LangVersion>
 		<Company>Dtronix</Company>
@@ -27,7 +27,16 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+		<PackageReference Include="Mono.TextTemplating" Version="2.2.1" />
+		<TextTemplate Include="**\*.tt" />
+		<Generated Include="**\*.g.cs" />
 	</ItemGroup>
+	<Target Name="TextTemplateTransform" BeforeTargets="BeforeBuild">
+		<Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 %(TextTemplate.Identity)" />
+	</Target>
+	<Target Name="TextTemplateClean" AfterTargets="Clean">
+		<Delete Files="@(Generated)" />
+	</Target>
 	<ItemGroup>
 		<None Include="icon.png">
 			<Pack>True</Pack>
@@ -38,10 +47,5 @@
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 			<_Parameter1>DtronixCommon.Tests</_Parameter1>
 		</AssemblyAttribute>
-	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\DtronixCommonCodeGeneration\DtronixCommonCodeGeneration.csproj"
-	                    PrivateAssets="All"
-	                    OutputItemType="Analyzer"/>
 	</ItemGroup>
 </Project>
