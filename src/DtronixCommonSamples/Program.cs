@@ -56,6 +56,7 @@ namespace DtronixCommonSamples
                     qti.Query(int.MinValue, int.MinValue, int.MaxValue, int.MaxValue, id =>
                     {
                         ids.Add(id);
+                        return true;
                     });
                 });
                 Benchmark("Remove int", () =>
@@ -89,6 +90,7 @@ namespace DtronixCommonSamples
                     qtl.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
+                        return true;
                     });
                 });
                 Benchmark("Remove long", () =>
@@ -123,6 +125,7 @@ namespace DtronixCommonSamples
                     qtf.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
+                        return true;
                     });
                 });
                 Benchmark("Remove float", () =>
@@ -156,6 +159,7 @@ namespace DtronixCommonSamples
                     qtd.Query(long.MinValue, long.MinValue, long.MaxValue, long.MaxValue, id =>
                     {
                         ids.Add(id);
+                        return true;
                     });
                 });
                 Benchmark("Remove double", () =>

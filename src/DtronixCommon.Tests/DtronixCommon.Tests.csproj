@@ -16,5 +16,13 @@
   <ItemGroup>
     <ProjectReference Include="..\DtronixCommon\DtronixCommon.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Mono.TextTemplating" Version="2.2.1" />
+    <TextTemplate Include="**\*.tt" />
+    <Generated Include="**\*.g.cs" />
+  </ItemGroup>
+  <Target Name="TextTemplateTransform" BeforeTargets="BeforeBuild">
+    <Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 %(TextTemplate.Identity)" />
+  </Target>
 
 </Project>

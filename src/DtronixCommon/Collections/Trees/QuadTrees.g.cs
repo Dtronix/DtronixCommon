@@ -95,6 +95,9 @@ public class FloatQuadTree<T>
     private int _maxDepth;
 
     private T?[] items = new T[128];
+
+    public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
+
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
     public FloatQuadTree(float width, float height, int startMaxElements, int startMaxDepth)
     {
@@ -237,13 +240,13 @@ public class FloatQuadTree<T>
         }
     }
 
-    public IntList Query(
+    public List<T> Query(
         float x1,
         float y1,
         float x2, 
         float y2)
     {
-        var intListOut = new IntList(1);
+        var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
         if (_tempSize < _eleBounds.Size())
@@ -266,16 +269,17 @@ public class FloatQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    listOut.Add(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
-            _temp[intListOut.Get(j, 0)] = false;
-        return intListOut;
+        for (int j = 0; j < listOut.Count; j++)
+            _temp[listOut[j].QuadTreeId] = false;
+
+        return listOut;
     }
 
     public IntList Query(
@@ -313,7 +317,7 @@ public class FloatQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    cancel = callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items[element]!);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
@@ -577,6 +581,9 @@ public class LongQuadTree<T>
     private int _maxDepth;
 
     private T?[] items = new T[128];
+
+    public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
+
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
     public LongQuadTree(long width, long height, int startMaxElements, int startMaxDepth)
     {
@@ -719,13 +726,13 @@ public class LongQuadTree<T>
         }
     }
 
-    public IntList Query(
+    public List<T> Query(
         long x1,
         long y1,
         long x2, 
         long y2)
     {
-        var intListOut = new IntList(1);
+        var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
         if (_tempSize < _eleBounds.Size())
@@ -748,16 +755,17 @@ public class LongQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    listOut.Add(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
-            _temp[intListOut.Get(j, 0)] = false;
-        return intListOut;
+        for (int j = 0; j < listOut.Count; j++)
+            _temp[listOut[j].QuadTreeId] = false;
+
+        return listOut;
     }
 
     public IntList Query(
@@ -795,7 +803,7 @@ public class LongQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    cancel = callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items[element]!);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
@@ -1059,6 +1067,9 @@ public class IntQuadTree<T>
     private int _maxDepth;
 
     private T?[] items = new T[128];
+
+    public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
+
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
     public IntQuadTree(int width, int height, int startMaxElements, int startMaxDepth)
     {
@@ -1201,13 +1212,13 @@ public class IntQuadTree<T>
         }
     }
 
-    public IntList Query(
+    public List<T> Query(
         int x1,
         int y1,
         int x2, 
         int y2)
     {
-        var intListOut = new IntList(1);
+        var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
         if (_tempSize < _eleBounds.Size())
@@ -1230,16 +1241,17 @@ public class IntQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    listOut.Add(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
-            _temp[intListOut.Get(j, 0)] = false;
-        return intListOut;
+        for (int j = 0; j < listOut.Count; j++)
+            _temp[listOut[j].QuadTreeId] = false;
+
+        return listOut;
     }
 
     public IntList Query(
@@ -1277,7 +1289,7 @@ public class IntQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    cancel = callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items[element]!);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
@@ -1541,6 +1553,9 @@ public class DoubleQuadTree<T>
     private int _maxDepth;
 
     private T?[] items = new T[128];
+
+    public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
+
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
     public DoubleQuadTree(double width, double height, int startMaxElements, int startMaxDepth)
     {
@@ -1683,13 +1698,13 @@ public class DoubleQuadTree<T>
         }
     }
 
-    public IntList Query(
+    public List<T> Query(
         double x1,
         double y1,
         double x2, 
         double y2)
     {
-        var intListOut = new IntList(1);
+        var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
         if (_tempSize < _eleBounds.Size())
@@ -1712,16 +1727,17 @@ public class DoubleQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    listOut.Add(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
-            _temp[intListOut.Get(j, 0)] = false;
-        return intListOut;
+        for (int j = 0; j < listOut.Count; j++)
+            _temp[listOut[j].QuadTreeId] = false;
+
+        return listOut;
     }
 
     public IntList Query(
@@ -1759,7 +1775,7 @@ public class DoubleQuadTree<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    cancel = callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items[element]!);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
