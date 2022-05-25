@@ -29,6 +29,9 @@ jobs:
       env:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
+    - name: Tool Setup
+      run: dotnet tool restore
+      
     - name: Build
       run: dotnet build src/DtronixCommon -c Release
       
