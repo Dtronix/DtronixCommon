@@ -272,27 +272,6 @@ public class " + config.ClassName + @"<T>
         " + config.NumberType + @" x2, 
         " + config.NumberType + @" y2)
     {
-        return Query(x1, y1, x2, y2, null, default);
-    }
-
-    /// <summary>
-    /// Queries the quadtree for all the elements intersecting and encompassed in the passed bounds.
-    /// </summary>
-    /// <param name=""x1"">Minim X coordinate.</param>
-    /// <param name=""y1"">Minim Y coordinate.</param>
-    /// <param name=""x2"">Maximum X coordinate.</param>
-    /// <param name=""y2"">Maximum Y coordinate.</param>
-    /// <param name=""action"">Action to execute on each found element.</param>
-    /// <param name=""cancellationToken"">Cancellation token to cancel the query.</param>
-    /// <returns>Integer list of the ids of the elements contained in the query.</returns>
-    public IntList Query(
-        " + config.NumberType + @" x1,
-        " + config.NumberType + @" y1,
-        " + config.NumberType + @" x2,
-        " + config.NumberType + @" y2,
-        Action<T>? action, 
-        CancellationToken cancellationToken = default)
-    {
         var intListOut = new IntList(1);
 
         // Find the leaves that intersect the specified query rectangle.
@@ -320,16 +299,75 @@ public class " + config.ClassName + @"<T>
                 var btm = _eleBounds.Get(element, _eltIdxBtm);
                 if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
                 {
-                    if(cancellationToken.IsCancellationRequested)
-                        break;
-
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    action?.Invoke(items[element]!);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
-            if(cancellationToken.IsCancellationRequested)
+        }
+
+        // Unmark the elements that were inserted.
+        for (int j = 0; j < intListOut.Size(); ++j)
+            _temp[intListOut.Get(j, 0)] = false;
+
+        return intListOut;
+    }
+
+    /// <summary>
+    /// Queries the quadtree for all the elements intersecting and encompassed in the passed bounds.
+    /// </summary>
+    /// <param name=""x1"">Minim X coordinate.</param>
+    /// <param name=""y1"">Minim Y coordinate.</param>
+    /// <param name=""x2"">Maximum X coordinate.</param>
+    /// <param name=""y2"">Maximum Y coordinate.</param>
+    /// <param name=""action"">Action to execute on each found element.</param>
+    /// <param name=""cancellationToken"">Cancellation token to cancel the query.</param>
+    /// <returns>Integer list of the ids of the elements contained in the query.</returns>
+    public IntList Query(
+        " + config.NumberType + @" x1,
+        " + config.NumberType + @" y1,
+        " + config.NumberType + @" x2,
+        " + config.NumberType + @" y2,
+        Func<T, bool> action)
+    {
+        var intListOut = new IntList(1);
+
+        // Find the leaves that intersect the specified query rectangle.
+        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        if (_tempSize < _eleBounds.Size())
+        {
+            _tempSize = _eleBounds.Size();
+            _temp = new bool[_tempSize];
+        }
+        bool cancel = false;
+
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Size(); ++j)
+        {
+            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                var lft = _eleBounds.Get(element, _eltIdxLft);
+                var top = _eleBounds.Get(element, _eltIdxTop);
+                var rgt = _eleBounds.Get(element, _eltIdxRgt);
+                var btm = _eleBounds.Get(element, _eltIdxBtm);
+                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    cancel = action.Invoke(items[element]!);
+                    if(cancel)
+                        break;
+
+                    intListOut.Set(intListOut.PushBack(), 0, element);
+                    _temp[element] = true;
+                }
+                eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+            if(cancel)
                 break;
         }
 
