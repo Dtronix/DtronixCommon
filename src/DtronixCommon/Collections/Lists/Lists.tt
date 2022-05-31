@@ -44,63 +44,93 @@ namespace DtronixCommon.Collections.Lists;
 <# 	foreach (var config in configs)
 	{ #>
 /// <summary>
-/// https://stackoverflow.com/a/48354356
+/// List of <#=config.NumberType#> with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
+/// <remarks>https://stackoverflow.com/a/48354356</remarks>
 <#=config.Visibility#> class <#=config.ClassName#>
 {
-    private <#=config.NumberType#>[] _data = new <#=config.NumberType#>[128];
+    /// <summary>
+    /// Contains the data.
+    /// </summary>
+    private <#=config.NumberType#>[] _data;
+
+    /// <summary>
+    /// Number of fields which are used in the list.  This number is multuplied 
+    /// </summary>
     private int _numFields = 0;
-    private int _num = 0;
-    private int _cap = 128;
+
+    /// <summary>
+    /// Current number of elements the list contains.
+    /// </summary>
+    private int _count = 0;
+
+    /// <summary>
+    /// Index of the last free element in the array.  -1 if there are no free elements.
+    /// </summary>
     private int _freeElement = -1;
 
     /// <summary>
-    ///Creates a new list of elements which each consist of integer fields.
-    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// Number of elements the list contains.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public <#=config.ClassName#>(int startNumFields)
+    public int Count => _count;
+
+    /// <summary>
+    /// Creates a new list of elements which each consist of integer fields.
+    /// 'fieldCount' specifies the number of integer fields each element has.
+    /// Capacity starts starts at 128.
+    /// </summary>
+    /// <param name="fieldCount">Number of fields </param>
+    public <#=config.ClassName#>(int fieldCount)
+        : this(fieldCount, 128)
     {
-        _numFields = startNumFields;
     }
 
     /// <summary>
-    /// Returns the number of elements in the list.
+    /// Creates a new list of elements which each consist of integer fields with the specified number of elements.
+    /// 'fieldCount' specifies the number of integer fields each element has.
     /// </summary>
-    /// <returns></returns>
-    public int Size()
+    /// <param name="fieldCount"></param>
+    /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
+    public <#=config.ClassName#>(int fieldCount, int capacity)
     {
-        return _num;
+        _numFields = fieldCount;
+        _data = new <#=config.NumberType#>[capacity];
     }
 
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public <#=config.NumberType#> Get(int n, int field)
+    public <#=config.NumberType#> Get(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        return _data[n * _numFields + field];
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        return _data[index * _numFields + field];
     }
 
-    public int GetInt(int n, int field)
+    /// <summary>
+    /// Returns an integer from the currently passed field.
+    /// </summary>
+    /// <param name="index">index of the element to retrieve</param>
+    /// <param name="field">Field of the element to retrieve.</param>
+    /// <returns>Interger of the specified element field.</returns>
+    public int GetInt(int index, int field)
     {
-        return (int)Get(n, field);
+        return (int)Get(index, field);
     }
 
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int n, int field, <#=config.NumberType#> value)
+    public void Set(int index, int field, <#=config.NumberType#> value)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = value;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -108,7 +138,7 @@ namespace DtronixCommon.Collections.Lists;
     /// </summary>
     public void Clear()
     {
-        _num = 0;
+        _count = 0;
         _freeElement = -1;
     }
 
@@ -118,25 +148,22 @@ namespace DtronixCommon.Collections.Lists;
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_num + 1) * _numFields;
+        int newPos = (_count + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _cap)
+        if (newPos > _data.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             <#=config.NumberType#>[] newArray = new <#=config.NumberType#>[newCap];
-            Array.Copy(_data, newArray, _cap);
+            Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
-
-            // Set the old capacity to the new capacity.
-            _cap = newCap;
         }
 
-        return _num++;
+        return _count++;
     }
 
     /// <summary>
@@ -145,20 +172,20 @@ namespace DtronixCommon.Collections.Lists;
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_num > 0);
-        --_num;
+        Debug.Assert(_count > 0);
+        --_count;
     }
 
-    public void Increment(int n, int field)
+    public void Increment(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]++;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]++;
     }
 
-    public void Decrement(int n, int field)
+    public void Decrement(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]--;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]--;
     }
 
     /// <summary>
@@ -187,13 +214,13 @@ namespace DtronixCommon.Collections.Lists;
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
-    public void Erase(int n)
+    /// <param name="index"></param>
+    public void Erase(int index)
     {
         // Push the element to the free list.
-        int pos = n * _numFields;
+        int pos = index * _numFields;
         _data[pos] = _freeElement;
-        _freeElement = n;
+        _freeElement = index;
     }
 }
 <#

@@ -149,7 +149,7 @@ public class FloatQuadTree<T>
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -196,10 +196,10 @@ public class FloatQuadTree<T>
             toProcess.Set(toProcess.PushBack(), 0, 0);
         }
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
             // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
+            int node = (int)toProcess.Get(toProcess.Count - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
             toProcess.PopBack();
@@ -249,13 +249,13 @@ public class FloatQuadTree<T>
         var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
@@ -294,15 +294,15 @@ public class FloatQuadTree<T>
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
 
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -331,7 +331,7 @@ public class FloatQuadTree<T>
         }
 
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
+        for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
@@ -379,9 +379,9 @@ public class FloatQuadTree<T>
         var toProcess = new FloatList(_ndNum);
         PushNode(toProcess, node, depth, mx, my, sx, sy);
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
-            int backIdx = toProcess.Size() - 1;
+            int backIdx = toProcess.Count - 1;
             var ndMx = toProcess.Get(backIdx, _ndIdxMx);
             var ndMy = toProcess.Get(backIdx, _ndIdxMy);
             var ndSx = toProcess.Get(backIdx, _ndIdxSx);
@@ -428,7 +428,7 @@ public class FloatQuadTree<T>
         var btm = _eleBounds.Get(element, _eltIdxBtm);
         var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
 
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndMx = leaves.Get(j, _ndIdxMx);
             var ndMy = leaves.Get(j, _ndIdxMy);
@@ -483,7 +483,7 @@ public class FloatQuadTree<T>
 
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elts.Size(); ++j)
+            for (int j = 0; j < elts.Count; ++j)
                 node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
         }
         else
@@ -635,7 +635,7 @@ public class LongQuadTree<T>
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -682,10 +682,10 @@ public class LongQuadTree<T>
             toProcess.Set(toProcess.PushBack(), 0, 0);
         }
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
             // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
+            int node = (int)toProcess.Get(toProcess.Count - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
             toProcess.PopBack();
@@ -735,13 +735,13 @@ public class LongQuadTree<T>
         var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
@@ -780,15 +780,15 @@ public class LongQuadTree<T>
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
 
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -817,7 +817,7 @@ public class LongQuadTree<T>
         }
 
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
+        for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
@@ -865,9 +865,9 @@ public class LongQuadTree<T>
         var toProcess = new LongList(_ndNum);
         PushNode(toProcess, node, depth, mx, my, sx, sy);
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
-            int backIdx = toProcess.Size() - 1;
+            int backIdx = toProcess.Count - 1;
             var ndMx = toProcess.Get(backIdx, _ndIdxMx);
             var ndMy = toProcess.Get(backIdx, _ndIdxMy);
             var ndSx = toProcess.Get(backIdx, _ndIdxSx);
@@ -914,7 +914,7 @@ public class LongQuadTree<T>
         var btm = _eleBounds.Get(element, _eltIdxBtm);
         var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
 
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndMx = leaves.Get(j, _ndIdxMx);
             var ndMy = leaves.Get(j, _ndIdxMy);
@@ -969,7 +969,7 @@ public class LongQuadTree<T>
 
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elts.Size(); ++j)
+            for (int j = 0; j < elts.Count; ++j)
                 node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
         }
         else
@@ -1121,7 +1121,7 @@ public class IntQuadTree<T>
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -1168,10 +1168,10 @@ public class IntQuadTree<T>
             toProcess.Set(toProcess.PushBack(), 0, 0);
         }
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
             // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
+            int node = (int)toProcess.Get(toProcess.Count - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
             toProcess.PopBack();
@@ -1221,13 +1221,13 @@ public class IntQuadTree<T>
         var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
@@ -1266,15 +1266,15 @@ public class IntQuadTree<T>
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
 
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -1303,7 +1303,7 @@ public class IntQuadTree<T>
         }
 
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
+        for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
@@ -1351,9 +1351,9 @@ public class IntQuadTree<T>
         var toProcess = new IntList(_ndNum);
         PushNode(toProcess, node, depth, mx, my, sx, sy);
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
-            int backIdx = toProcess.Size() - 1;
+            int backIdx = toProcess.Count - 1;
             var ndMx = toProcess.Get(backIdx, _ndIdxMx);
             var ndMy = toProcess.Get(backIdx, _ndIdxMy);
             var ndSx = toProcess.Get(backIdx, _ndIdxSx);
@@ -1400,7 +1400,7 @@ public class IntQuadTree<T>
         var btm = _eleBounds.Get(element, _eltIdxBtm);
         var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
 
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndMx = leaves.Get(j, _ndIdxMx);
             var ndMy = leaves.Get(j, _ndIdxMy);
@@ -1455,7 +1455,7 @@ public class IntQuadTree<T>
 
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elts.Size(); ++j)
+            for (int j = 0; j < elts.Count; ++j)
                 node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
         }
         else
@@ -1607,7 +1607,7 @@ public class DoubleQuadTree<T>
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -1654,10 +1654,10 @@ public class DoubleQuadTree<T>
             toProcess.Set(toProcess.PushBack(), 0, 0);
         }
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
             // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.Size() - 1, 0);
+            int node = (int)toProcess.Get(toProcess.Count - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
             toProcess.PopBack();
@@ -1707,13 +1707,13 @@ public class DoubleQuadTree<T>
         var listOut = new List<T>();
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
@@ -1752,15 +1752,15 @@ public class DoubleQuadTree<T>
         // Find the leaves that intersect the specified query rectangle.
         var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
 
-        if (_tempSize < _eleBounds.Size())
+        if (_tempSize < _eleBounds.Count)
         {
-            _tempSize = _eleBounds.Size();
+            _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
 
@@ -1789,7 +1789,7 @@ public class DoubleQuadTree<T>
         }
 
         // Unmark the elements that were inserted.
-        for (int j = 0; j < intListOut.Size(); ++j)
+        for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
@@ -1837,9 +1837,9 @@ public class DoubleQuadTree<T>
         var toProcess = new DoubleList(_ndNum);
         PushNode(toProcess, node, depth, mx, my, sx, sy);
 
-        while (toProcess.Size() > 0)
+        while (toProcess.Count > 0)
         {
-            int backIdx = toProcess.Size() - 1;
+            int backIdx = toProcess.Count - 1;
             var ndMx = toProcess.Get(backIdx, _ndIdxMx);
             var ndMy = toProcess.Get(backIdx, _ndIdxMy);
             var ndSx = toProcess.Get(backIdx, _ndIdxSx);
@@ -1886,7 +1886,7 @@ public class DoubleQuadTree<T>
         var btm = _eleBounds.Get(element, _eltIdxBtm);
         var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
 
-        for (int j = 0; j < leaves.Size(); ++j)
+        for (int j = 0; j < leaves.Count; ++j)
         {
             var ndMx = leaves.Get(j, _ndIdxMx);
             var ndMy = leaves.Get(j, _ndIdxMy);
@@ -1941,7 +1941,7 @@ public class DoubleQuadTree<T>
 
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elts.Size(); ++j)
+            for (int j = 0; j < elts.Count; ++j)
                 node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
         }
         else

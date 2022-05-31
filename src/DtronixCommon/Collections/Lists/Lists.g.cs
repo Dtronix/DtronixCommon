@@ -8,63 +8,93 @@ using System.Runtime.CompilerServices;
 namespace DtronixCommon.Collections.Lists;
 
 /// <summary>
-/// https://stackoverflow.com/a/48354356
+/// List of float with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
+/// <remarks>https://stackoverflow.com/a/48354356</remarks>
 internal class FloatList
 {
-    private float[] _data = new float[128];
+    /// <summary>
+    /// Contains the data.
+    /// </summary>
+    private float[] _data;
+
+    /// <summary>
+    /// Number of fields which are used in the list.  This number is multuplied 
+    /// </summary>
     private int _numFields = 0;
-    private int _num = 0;
-    private int _cap = 128;
+
+    /// <summary>
+    /// Current number of elements the list contains.
+    /// </summary>
+    private int _count = 0;
+
+    /// <summary>
+    /// Index of the last free element in the array.  -1 if there are no free elements.
+    /// </summary>
     private int _freeElement = -1;
 
     /// <summary>
-    ///Creates a new list of elements which each consist of integer fields.
-    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// Number of elements the list contains.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public FloatList(int startNumFields)
+    public int Count => _count;
+
+    /// <summary>
+    /// Creates a new list of elements which each consist of integer fields.
+    /// 'fieldCount' specifies the number of integer fields each element has.
+    /// Capacity starts starts at 128.
+    /// </summary>
+    /// <param name="fieldCount">Number of fields </param>
+    public FloatList(int fieldCount)
+        : this(fieldCount, 128)
     {
-        _numFields = startNumFields;
     }
 
     /// <summary>
-    /// Returns the number of elements in the list.
+    /// Creates a new list of elements which each consist of integer fields with the specified number of elements.
+    /// 'fieldCount' specifies the number of integer fields each element has.
     /// </summary>
-    /// <returns></returns>
-    public int Size()
+    /// <param name="fieldCount"></param>
+    /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
+    public FloatList(int fieldCount, int capacity)
     {
-        return _num;
+        _numFields = fieldCount;
+        _data = new float[capacity];
     }
 
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public float Get(int n, int field)
+    public float Get(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        return _data[n * _numFields + field];
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        return _data[index * _numFields + field];
     }
 
-    public int GetInt(int n, int field)
+    /// <summary>
+    /// Returns an integer from the currently passed field.
+    /// </summary>
+    /// <param name="index">index of the element to retrieve</param>
+    /// <param name="field">Field of the element to retrieve.</param>
+    /// <returns>Interger of the specified element field.</returns>
+    public int GetInt(int index, int field)
     {
-        return (int)Get(n, field);
+        return (int)Get(index, field);
     }
 
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int n, int field, float value)
+    public void Set(int index, int field, float value)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = value;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -72,7 +102,7 @@ internal class FloatList
     /// </summary>
     public void Clear()
     {
-        _num = 0;
+        _count = 0;
         _freeElement = -1;
     }
 
@@ -82,25 +112,22 @@ internal class FloatList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_num + 1) * _numFields;
+        int newPos = (_count + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _cap)
+        if (newPos > _data.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             float[] newArray = new float[newCap];
-            Array.Copy(_data, newArray, _cap);
+            Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
-
-            // Set the old capacity to the new capacity.
-            _cap = newCap;
         }
 
-        return _num++;
+        return _count++;
     }
 
     /// <summary>
@@ -109,20 +136,20 @@ internal class FloatList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_num > 0);
-        --_num;
+        Debug.Assert(_count > 0);
+        --_count;
     }
 
-    public void Increment(int n, int field)
+    public void Increment(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]++;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]++;
     }
 
-    public void Decrement(int n, int field)
+    public void Decrement(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]--;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]--;
     }
 
     /// <summary>
@@ -151,73 +178,103 @@ internal class FloatList
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
-    public void Erase(int n)
+    /// <param name="index"></param>
+    public void Erase(int index)
     {
         // Push the element to the free list.
-        int pos = n * _numFields;
+        int pos = index * _numFields;
         _data[pos] = _freeElement;
-        _freeElement = n;
+        _freeElement = index;
     }
 }
 /// <summary>
-/// https://stackoverflow.com/a/48354356
+/// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
+/// <remarks>https://stackoverflow.com/a/48354356</remarks>
 internal class DoubleList
 {
-    private double[] _data = new double[128];
+    /// <summary>
+    /// Contains the data.
+    /// </summary>
+    private double[] _data;
+
+    /// <summary>
+    /// Number of fields which are used in the list.  This number is multuplied 
+    /// </summary>
     private int _numFields = 0;
-    private int _num = 0;
-    private int _cap = 128;
+
+    /// <summary>
+    /// Current number of elements the list contains.
+    /// </summary>
+    private int _count = 0;
+
+    /// <summary>
+    /// Index of the last free element in the array.  -1 if there are no free elements.
+    /// </summary>
     private int _freeElement = -1;
 
     /// <summary>
-    ///Creates a new list of elements which each consist of integer fields.
-    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// Number of elements the list contains.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public DoubleList(int startNumFields)
+    public int Count => _count;
+
+    /// <summary>
+    /// Creates a new list of elements which each consist of integer fields.
+    /// 'fieldCount' specifies the number of integer fields each element has.
+    /// Capacity starts starts at 128.
+    /// </summary>
+    /// <param name="fieldCount">Number of fields </param>
+    public DoubleList(int fieldCount)
+        : this(fieldCount, 128)
     {
-        _numFields = startNumFields;
     }
 
     /// <summary>
-    /// Returns the number of elements in the list.
+    /// Creates a new list of elements which each consist of integer fields with the specified number of elements.
+    /// 'fieldCount' specifies the number of integer fields each element has.
     /// </summary>
-    /// <returns></returns>
-    public int Size()
+    /// <param name="fieldCount"></param>
+    /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
+    public DoubleList(int fieldCount, int capacity)
     {
-        return _num;
+        _numFields = fieldCount;
+        _data = new double[capacity];
     }
 
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double Get(int n, int field)
+    public double Get(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        return _data[n * _numFields + field];
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        return _data[index * _numFields + field];
     }
 
-    public int GetInt(int n, int field)
+    /// <summary>
+    /// Returns an integer from the currently passed field.
+    /// </summary>
+    /// <param name="index">index of the element to retrieve</param>
+    /// <param name="field">Field of the element to retrieve.</param>
+    /// <returns>Interger of the specified element field.</returns>
+    public int GetInt(int index, int field)
     {
-        return (int)Get(n, field);
+        return (int)Get(index, field);
     }
 
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int n, int field, double value)
+    public void Set(int index, int field, double value)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = value;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -225,7 +282,7 @@ internal class DoubleList
     /// </summary>
     public void Clear()
     {
-        _num = 0;
+        _count = 0;
         _freeElement = -1;
     }
 
@@ -235,25 +292,22 @@ internal class DoubleList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_num + 1) * _numFields;
+        int newPos = (_count + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _cap)
+        if (newPos > _data.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             double[] newArray = new double[newCap];
-            Array.Copy(_data, newArray, _cap);
+            Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
-
-            // Set the old capacity to the new capacity.
-            _cap = newCap;
         }
 
-        return _num++;
+        return _count++;
     }
 
     /// <summary>
@@ -262,20 +316,20 @@ internal class DoubleList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_num > 0);
-        --_num;
+        Debug.Assert(_count > 0);
+        --_count;
     }
 
-    public void Increment(int n, int field)
+    public void Increment(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]++;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]++;
     }
 
-    public void Decrement(int n, int field)
+    public void Decrement(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]--;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]--;
     }
 
     /// <summary>
@@ -304,73 +358,103 @@ internal class DoubleList
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
-    public void Erase(int n)
+    /// <param name="index"></param>
+    public void Erase(int index)
     {
         // Push the element to the free list.
-        int pos = n * _numFields;
+        int pos = index * _numFields;
         _data[pos] = _freeElement;
-        _freeElement = n;
+        _freeElement = index;
     }
 }
 /// <summary>
-/// https://stackoverflow.com/a/48354356
+/// List of int with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
+/// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class IntList
 {
-    private int[] _data = new int[128];
+    /// <summary>
+    /// Contains the data.
+    /// </summary>
+    private int[] _data;
+
+    /// <summary>
+    /// Number of fields which are used in the list.  This number is multuplied 
+    /// </summary>
     private int _numFields = 0;
-    private int _num = 0;
-    private int _cap = 128;
+
+    /// <summary>
+    /// Current number of elements the list contains.
+    /// </summary>
+    private int _count = 0;
+
+    /// <summary>
+    /// Index of the last free element in the array.  -1 if there are no free elements.
+    /// </summary>
     private int _freeElement = -1;
 
     /// <summary>
-    ///Creates a new list of elements which each consist of integer fields.
-    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// Number of elements the list contains.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public IntList(int startNumFields)
+    public int Count => _count;
+
+    /// <summary>
+    /// Creates a new list of elements which each consist of integer fields.
+    /// 'fieldCount' specifies the number of integer fields each element has.
+    /// Capacity starts starts at 128.
+    /// </summary>
+    /// <param name="fieldCount">Number of fields </param>
+    public IntList(int fieldCount)
+        : this(fieldCount, 128)
     {
-        _numFields = startNumFields;
     }
 
     /// <summary>
-    /// Returns the number of elements in the list.
+    /// Creates a new list of elements which each consist of integer fields with the specified number of elements.
+    /// 'fieldCount' specifies the number of integer fields each element has.
     /// </summary>
-    /// <returns></returns>
-    public int Size()
+    /// <param name="fieldCount"></param>
+    /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
+    public IntList(int fieldCount, int capacity)
     {
-        return _num;
+        _numFields = fieldCount;
+        _data = new int[capacity];
     }
 
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Get(int n, int field)
+    public int Get(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        return _data[n * _numFields + field];
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        return _data[index * _numFields + field];
     }
 
-    public int GetInt(int n, int field)
+    /// <summary>
+    /// Returns an integer from the currently passed field.
+    /// </summary>
+    /// <param name="index">index of the element to retrieve</param>
+    /// <param name="field">Field of the element to retrieve.</param>
+    /// <returns>Interger of the specified element field.</returns>
+    public int GetInt(int index, int field)
     {
-        return (int)Get(n, field);
+        return (int)Get(index, field);
     }
 
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int n, int field, int value)
+    public void Set(int index, int field, int value)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = value;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -378,7 +462,7 @@ public class IntList
     /// </summary>
     public void Clear()
     {
-        _num = 0;
+        _count = 0;
         _freeElement = -1;
     }
 
@@ -388,25 +472,22 @@ public class IntList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_num + 1) * _numFields;
+        int newPos = (_count + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _cap)
+        if (newPos > _data.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             int[] newArray = new int[newCap];
-            Array.Copy(_data, newArray, _cap);
+            Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
-
-            // Set the old capacity to the new capacity.
-            _cap = newCap;
         }
 
-        return _num++;
+        return _count++;
     }
 
     /// <summary>
@@ -415,20 +496,20 @@ public class IntList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_num > 0);
-        --_num;
+        Debug.Assert(_count > 0);
+        --_count;
     }
 
-    public void Increment(int n, int field)
+    public void Increment(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]++;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]++;
     }
 
-    public void Decrement(int n, int field)
+    public void Decrement(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]--;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]--;
     }
 
     /// <summary>
@@ -457,73 +538,103 @@ public class IntList
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
-    public void Erase(int n)
+    /// <param name="index"></param>
+    public void Erase(int index)
     {
         // Push the element to the free list.
-        int pos = n * _numFields;
+        int pos = index * _numFields;
         _data[pos] = _freeElement;
-        _freeElement = n;
+        _freeElement = index;
     }
 }
 /// <summary>
-/// https://stackoverflow.com/a/48354356
+/// List of long with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
+/// <remarks>https://stackoverflow.com/a/48354356</remarks>
 internal class LongList
 {
-    private long[] _data = new long[128];
+    /// <summary>
+    /// Contains the data.
+    /// </summary>
+    private long[] _data;
+
+    /// <summary>
+    /// Number of fields which are used in the list.  This number is multuplied 
+    /// </summary>
     private int _numFields = 0;
-    private int _num = 0;
-    private int _cap = 128;
+
+    /// <summary>
+    /// Current number of elements the list contains.
+    /// </summary>
+    private int _count = 0;
+
+    /// <summary>
+    /// Index of the last free element in the array.  -1 if there are no free elements.
+    /// </summary>
     private int _freeElement = -1;
 
     /// <summary>
-    ///Creates a new list of elements which each consist of integer fields.
-    /// 'startNumFields' specifies the number of integer fields each element has.
+    /// Number of elements the list contains.
     /// </summary>
-    /// <param name="startNumFields"></param>
-    public LongList(int startNumFields)
+    public int Count => _count;
+
+    /// <summary>
+    /// Creates a new list of elements which each consist of integer fields.
+    /// 'fieldCount' specifies the number of integer fields each element has.
+    /// Capacity starts starts at 128.
+    /// </summary>
+    /// <param name="fieldCount">Number of fields </param>
+    public LongList(int fieldCount)
+        : this(fieldCount, 128)
     {
-        _numFields = startNumFields;
     }
 
     /// <summary>
-    /// Returns the number of elements in the list.
+    /// Creates a new list of elements which each consist of integer fields with the specified number of elements.
+    /// 'fieldCount' specifies the number of integer fields each element has.
     /// </summary>
-    /// <returns></returns>
-    public int Size()
+    /// <param name="fieldCount"></param>
+    /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
+    public LongList(int fieldCount, int capacity)
     {
-        return _num;
+        _numFields = fieldCount;
+        _data = new long[capacity];
     }
 
     /// <summary>
     /// Returns the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long Get(int n, int field)
+    public long Get(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        return _data[n * _numFields + field];
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        return _data[index * _numFields + field];
     }
 
-    public int GetInt(int n, int field)
+    /// <summary>
+    /// Returns an integer from the currently passed field.
+    /// </summary>
+    /// <param name="index">index of the element to retrieve</param>
+    /// <param name="field">Field of the element to retrieve.</param>
+    /// <returns>Interger of the specified element field.</returns>
+    public int GetInt(int index, int field)
     {
-        return (int)Get(n, field);
+        return (int)Get(index, field);
     }
 
     /// <summary>
     /// Sets the value of the specified field for the nth element.
     /// </summary>
-    /// <param name="n"></param>
+    /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int n, int field, long value)
+    public void Set(int index, int field, long value)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field] = value;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -531,7 +642,7 @@ internal class LongList
     /// </summary>
     public void Clear()
     {
-        _num = 0;
+        _count = 0;
         _freeElement = -1;
     }
 
@@ -541,25 +652,22 @@ internal class LongList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_num + 1) * _numFields;
+        int newPos = (_count + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _cap)
+        if (newPos > _data.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             long[] newArray = new long[newCap];
-            Array.Copy(_data, newArray, _cap);
+            Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
-
-            // Set the old capacity to the new capacity.
-            _cap = newCap;
         }
 
-        return _num++;
+        return _count++;
     }
 
     /// <summary>
@@ -568,20 +676,20 @@ internal class LongList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_num > 0);
-        --_num;
+        Debug.Assert(_count > 0);
+        --_count;
     }
 
-    public void Increment(int n, int field)
+    public void Increment(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]++;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]++;
     }
 
-    public void Decrement(int n, int field)
+    public void Decrement(int index, int field)
     {
-        Debug.Assert(n >= 0 && n < _num && field >= 0 && field < _numFields);
-        _data[n * _numFields + field]--;
+        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        _data[index * _numFields + field]--;
     }
 
     /// <summary>
@@ -610,12 +718,12 @@ internal class LongList
     /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
-    /// <param name="n"></param>
-    public void Erase(int n)
+    /// <param name="index"></param>
+    public void Erase(int index)
     {
         // Push the element to the free list.
-        int pos = n * _numFields;
+        int pos = index * _numFields;
         _data[pos] = _freeElement;
-        _freeElement = n;
+        _freeElement = index;
     }
 }
