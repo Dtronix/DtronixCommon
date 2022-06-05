@@ -24,7 +24,7 @@ public class FloatQuadTree<T>
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private IntList _eleNodes = new IntList(2);
+    private readonly IntList _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -39,7 +39,7 @@ public class FloatQuadTree<T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private FloatList _eleBounds = new FloatList(_eleBoundsItems);
+    private readonly FloatList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -53,7 +53,7 @@ public class FloatQuadTree<T>
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private IntList _nodes = new IntList(2);
+    private readonly IntList _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -94,15 +94,20 @@ public class FloatQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items = new T[128];
+    private T?[] items;
 
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public FloatQuadTree(float width, float height, int startMaxElements, int startMaxDepth)
+    public FloatQuadTree(float width, float height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
+        
+        _eleNodes = new IntList(2, 2 * initialCapacity);
+        _nodes = new IntList(2, 2 * initialCapacity);
+        _eleBounds = new FloatList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        items = new T[initialCapacity];
 
         // Insert the root node to the qt.
         _nodes.Insert();
@@ -510,7 +515,7 @@ public class LongQuadTree<T>
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private IntList _eleNodes = new IntList(2);
+    private readonly IntList _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -525,7 +530,7 @@ public class LongQuadTree<T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private LongList _eleBounds = new LongList(_eleBoundsItems);
+    private readonly LongList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -539,7 +544,7 @@ public class LongQuadTree<T>
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private IntList _nodes = new IntList(2);
+    private readonly IntList _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -580,15 +585,20 @@ public class LongQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items = new T[128];
+    private T?[] items;
 
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public LongQuadTree(long width, long height, int startMaxElements, int startMaxDepth)
+    public LongQuadTree(long width, long height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
+        
+        _eleNodes = new IntList(2, 2 * initialCapacity);
+        _nodes = new IntList(2, 2 * initialCapacity);
+        _eleBounds = new LongList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        items = new T[initialCapacity];
 
         // Insert the root node to the qt.
         _nodes.Insert();
@@ -996,7 +1006,7 @@ public class IntQuadTree<T>
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private IntList _eleNodes = new IntList(2);
+    private readonly IntList _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -1011,7 +1021,7 @@ public class IntQuadTree<T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private IntList _eleBounds = new IntList(_eleBoundsItems);
+    private readonly IntList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -1025,7 +1035,7 @@ public class IntQuadTree<T>
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private IntList _nodes = new IntList(2);
+    private readonly IntList _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -1066,15 +1076,20 @@ public class IntQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items = new T[128];
+    private T?[] items;
 
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public IntQuadTree(int width, int height, int startMaxElements, int startMaxDepth)
+    public IntQuadTree(int width, int height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
+        
+        _eleNodes = new IntList(2, 2 * initialCapacity);
+        _nodes = new IntList(2, 2 * initialCapacity);
+        _eleBounds = new IntList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        items = new T[initialCapacity];
 
         // Insert the root node to the qt.
         _nodes.Insert();
@@ -1482,7 +1497,7 @@ public class DoubleQuadTree<T>
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private IntList _eleNodes = new IntList(2);
+    private readonly IntList _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -1497,7 +1512,7 @@ public class DoubleQuadTree<T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private DoubleList _eleBounds = new DoubleList(_eleBoundsItems);
+    private readonly DoubleList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -1511,7 +1526,7 @@ public class DoubleQuadTree<T>
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private IntList _nodes = new IntList(2);
+    private readonly IntList _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -1552,15 +1567,20 @@ public class DoubleQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items = new T[128];
+    private T?[] items;
 
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public DoubleQuadTree(double width, double height, int startMaxElements, int startMaxDepth)
+    public DoubleQuadTree(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
+        
+        _eleNodes = new IntList(2, 2 * initialCapacity);
+        _nodes = new IntList(2, 2 * initialCapacity);
+        _eleBounds = new DoubleList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        items = new T[initialCapacity];
 
         // Insert the root node to the qt.
         _nodes.Insert();

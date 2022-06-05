@@ -62,7 +62,7 @@ public class <#=config.ClassName#><T>
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private IntList _eleNodes = new IntList(2);
+    private readonly IntList _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -77,7 +77,7 @@ public class <#=config.ClassName#><T>
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private <#=config.MainListClass#> _eleBounds = new <#=config.MainListClass#>(_eleBoundsItems);
+    private readonly <#=config.MainListClass#> _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -91,7 +91,7 @@ public class <#=config.ClassName#><T>
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private IntList _nodes = new IntList(2);
+    private readonly IntList _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -132,15 +132,20 @@ public class <#=config.ClassName#><T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items = new T[128];
+    private T?[] items;
 
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
     // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
-    public <#=config.ClassName#>(<#=config.MainNumberType#> width, <#=config.MainNumberType#> height, int startMaxElements, int startMaxDepth)
+    public <#=config.ClassName#>(<#=config.MainNumberType#> width, <#=config.MainNumberType#> height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
+        
+        _eleNodes = new IntList(2, 2 * initialCapacity);
+        _nodes = new IntList(2, 2 * initialCapacity);
+        _eleBounds = new <#=config.MainListClass#>(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        items = new T[initialCapacity];
 
         // Insert the root node to the qt.
         _nodes.Insert();
