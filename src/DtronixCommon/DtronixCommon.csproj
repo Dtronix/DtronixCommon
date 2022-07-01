@@ -31,7 +31,7 @@
 		<TextTemplate Include="**\*.tt" />
 		<Generated Include="**\*.g.cs" />
 	</ItemGroup>
-	<Target Name="TextTemplateTransform" BeforeTargets="BeforeBuild">
+	<Target Name="TextTemplateTransform" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
 		<Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 %(TextTemplate.Identity)" />
 	</Target>
 	<Target Name="TextTemplateClean" AfterTargets="Clean">

@@ -342,6 +342,45 @@ public class FloatQuadTree<T>
         return intListOut;
     }
 
+    public void Walk(
+        float x1,
+        float y1,
+        float x2,
+        float y2,
+        Func<T, bool> callback)
+    {
+        // Find the leaves that intersect the specified query rectangle.
+        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        bool cancel = false;
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Count; ++j)
+        {
+            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                var lft = _eleBounds.Get(element, _eltIdxLft);
+                var top = _eleBounds.Get(element, _eltIdxTop);
+                var rgt = _eleBounds.Get(element, _eltIdxRgt);
+                var btm = _eleBounds.Get(element, _eltIdxBtm);
+                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    cancel = !callback.Invoke(items[element]!);
+                    if(cancel)
+                        break;
+                }
+                eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+
+            if(cancel)
+                break;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
         in float l1,
@@ -831,6 +870,45 @@ public class LongQuadTree<T>
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
+    }
+
+    public void Walk(
+        long x1,
+        long y1,
+        long x2,
+        long y2,
+        Func<T, bool> callback)
+    {
+        // Find the leaves that intersect the specified query rectangle.
+        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        bool cancel = false;
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Count; ++j)
+        {
+            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                var lft = _eleBounds.Get(element, _eltIdxLft);
+                var top = _eleBounds.Get(element, _eltIdxTop);
+                var rgt = _eleBounds.Get(element, _eltIdxRgt);
+                var btm = _eleBounds.Get(element, _eltIdxBtm);
+                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    cancel = !callback.Invoke(items[element]!);
+                    if(cancel)
+                        break;
+                }
+                eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+
+            if(cancel)
+                break;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1324,6 +1402,45 @@ public class IntQuadTree<T>
         return intListOut;
     }
 
+    public void Walk(
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        Func<T, bool> callback)
+    {
+        // Find the leaves that intersect the specified query rectangle.
+        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        bool cancel = false;
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Count; ++j)
+        {
+            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                var lft = _eleBounds.Get(element, _eltIdxLft);
+                var top = _eleBounds.Get(element, _eltIdxTop);
+                var rgt = _eleBounds.Get(element, _eltIdxRgt);
+                var btm = _eleBounds.Get(element, _eltIdxBtm);
+                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    cancel = !callback.Invoke(items[element]!);
+                    if(cancel)
+                        break;
+                }
+                eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+
+            if(cancel)
+                break;
+        }
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
         in int l1,
@@ -1813,6 +1930,45 @@ public class DoubleQuadTree<T>
             _temp[intListOut.Get(j, 0)] = false;
 
         return intListOut;
+    }
+
+    public void Walk(
+        double x1,
+        double y1,
+        double x2,
+        double y2,
+        Func<T, bool> callback)
+    {
+        // Find the leaves that intersect the specified query rectangle.
+        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+
+        bool cancel = false;
+        // For each leaf node, look for elements that intersect.
+        for (int j = 0; j < leaves.Count; ++j)
+        {
+            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+
+            // Walk the list and add elements that intersect.
+            int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            while (eltNodeIndex != -1)
+            {
+                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                var lft = _eleBounds.Get(element, _eltIdxLft);
+                var top = _eleBounds.Get(element, _eltIdxTop);
+                var rgt = _eleBounds.Get(element, _eltIdxRgt);
+                var btm = _eleBounds.Get(element, _eltIdxBtm);
+                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                {
+                    cancel = !callback.Invoke(items[element]!);
+                    if(cancel)
+                        break;
+                }
+                eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
+            }
+
+            if(cancel)
+                break;
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
