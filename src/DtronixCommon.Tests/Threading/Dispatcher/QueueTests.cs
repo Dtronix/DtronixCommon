@@ -155,6 +155,6 @@ public class QueueTests
         Assert.IsTrue(fire());
         fire();
         Assert.IsFalse(fire());
-        Assert.LessOrEqual(sw.ElapsedMilliseconds, 100);
+        Assert.LessOrEqual(sw.ElapsedMilliseconds, 500);
     }
 }
