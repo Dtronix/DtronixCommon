@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using DtronixCommon.Tests.Utilities;
 using DtronixCommon.Threading.Dispatcher;
+using DtronixCommon.Threading.Dispatcher.Actions;
 using NUnit.Framework;
 
 namespace DtronixCommon.Tests.Threading.Dispatcher;
@@ -111,6 +112,46 @@ public class ThreadDispatcherTests
         {
             await dispatcher.Queue(() => { Assert.Pass(); }).TestTimeout();
         });
+
+    }
+
+    private class BasicMessagePumpActionBase_ExecutesClass : BasicMessagePumpActionBase
+    {
+        private Action _action;
+        public BasicMessagePumpActionBase_ExecutesClass(Action action) 
+            : base(default)
+        {
+            _action = action;
+        }
+
+        protected override void OnSetFailed(Exception e)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void OnSetCanceled()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void OnExecute(CancellationToken cancellationToken)
+        {
+            _action?.Invoke();
+        }
+    }
+
+    [Test]
+    public async Task BasicMessagePumpActionBase_Executes()
+    {
+        var dispatcher = new ThreadDispatcher(1);
+        dispatcher.Start();
+        var tcs = new TaskCompletionSource();
+        dispatcher.QueueFireForget(new BasicMessagePumpActionBase_ExecutesClass(() =>
+        {
+            tcs.SetResult();
+        }));
+
+        await tcs.Task.TestTimeout();
 
     }
 }
