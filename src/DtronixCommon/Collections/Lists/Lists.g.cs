@@ -11,7 +11,7 @@ namespace DtronixCommon.Collections.Lists;
 /// List of float with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-internal class FloatList
+public class FloatList
 {
     /// <summary>
     /// Contains the data.
@@ -191,7 +191,7 @@ internal class FloatList
 /// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-internal class DoubleList
+public class DoubleList
 {
     /// <summary>
     /// Contains the data.
@@ -551,7 +551,7 @@ public class IntList
 /// List of long with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-internal class LongList
+public class LongList
 {
     /// <summary>
     /// Contains the data.

@@ -10,13 +10,13 @@
 		{
 			ClassName = "FloatList",
 			NumberType = "float",
-			Visibility = "internal"
+			Visibility = "public"
 		},
 		new Config()
 		{
 			ClassName = "DoubleList",
 			NumberType = "double",
-			Visibility = "internal"
+			Visibility = "public"
 		},
 		new Config()
 		{
@@ -28,7 +28,7 @@
 		{
 			ClassName = "LongList",
 			NumberType = "long",
-			Visibility = "internal"
+			Visibility = "public"
 		}
 	};
 #>
