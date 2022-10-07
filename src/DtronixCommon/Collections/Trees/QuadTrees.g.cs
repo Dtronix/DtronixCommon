@@ -96,9 +96,27 @@ public class FloatQuadTree<T>
 
     private T?[] items;
 
+    private readonly float[] _rootNode;
+
+    private readonly CachingFloatList _listCache = new CachingFloatList();
+
+    /// <summary>
+    /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
+    /// </summary>
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
-    // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
+    /// <summary>
+    /// Creates a quadtree with the requested extents, maximum elements per leaf,
+    /// and maximum tree depth and maximum capacity.
+    /// </summary>
+    /// <param name="width">Width extents of the root node.</param>
+    /// <param name="height">Height extents of the root node.</param>
+    /// <param name="startMaxElements">
+    /// Maximum allowed elements in a leaf before the leaf is subdivided/split unless
+    /// the leaf is at the maximum allowed tree depth.
+    /// </param>
+    /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
+    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
     public FloatQuadTree(float width, float height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -115,51 +133,66 @@ public class FloatQuadTree<T>
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootMx = width / 2;
-        _rootMy = height / 2;
-        _rootSx = _rootMx;
-        _rootSy = _rootMy;
+        _rootNode = new[]
+        {
+            width / 2, // _ndIdxMx
+            height / 2, // _ndIdxMy
+            width / 2, // _ndIdxSx
+            height / 2, // _ndIdxSy
+            0, // _ndIdxIndex
+            0 // _ndIdxDepth
+        };
     }
 
-    // Outputs a list of elements found in the specified rectangle.
+    /// <summary>
+    /// Inserts an item into the quad tree at with the specified bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="item">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
     public int Insert(float x1, float y1, float x2, float y2, T item)
     {
-        // Insert a new element.
-        var newElement = _eleBounds.Insert();
+        if (item.QuadTreeId != -1)
+            return -1;
 
+        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
+        // Insert a new element.                   
+        var newElement = _eleBounds.Insert(bounds);  
+                                                   
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = item;
-        // Set the fields of the new element.
-        _eleBounds.Set(newElement, _eltIdxLft, x1);
-        _eleBounds.Set(newElement, _eltIdxTop, y1);
-        _eleBounds.Set(newElement, _eltIdxRgt, x2);
-        _eleBounds.Set(newElement, _eltIdxBtm, y2);
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
+        node_insert(new ReadOnlySpan<float>(_rootNode), bounds, newElement);
         item.QuadTreeId = newElement;
         return newElement;
     }
 
-    // Removes the specified element from the tree.
-    public void Remove(T element)
+    /// <summary>
+    /// Removes the specified element from the tree.
+    /// </summary>
+    /// <param name="element">Element to remove.</param>
+        public void Remove(T element)
     {
         // Find the leaves.
-        var lft = _eleBounds.Get(element.QuadTreeId, _eltIdxLft);
-        var top = _eleBounds.Get(element.QuadTreeId, _eltIdxTop);
-        var rgt = _eleBounds.Get(element.QuadTreeId, _eltIdxRgt);
-        var btm = _eleBounds.Get(element.QuadTreeId, _eltIdxBtm);
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
+        var leaves = find_leaves(
+            new ReadOnlySpan<float>(_rootNode),
+            _eleBounds.Get(element.QuadTreeId, 0, 4));
+
+        int nodeIndex, ndIndex;
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != element.QuadTreeId)
             {
@@ -181,7 +214,7 @@ public class FloatQuadTree<T>
                 _nodes.Decrement(ndIndex, _nodeIdxNum);
             }
         }
-
+        leaves.Return();
         // Remove the element.
         _eleBounds.Erase(element.QuadTreeId);
         items[element.QuadTreeId] = default;
@@ -189,7 +222,9 @@ public class FloatQuadTree<T>
 
     }
 
-    // Cleans up the tree, removing empty leaves.
+    /// <summary>
+    /// Cleans up the tree, removing empty leaves.
+    /// </summary>
     public void Cleanup()
     {
         IntList toProcess = new IntList(1);
@@ -245,6 +280,14 @@ public class FloatQuadTree<T>
         }
     }
 
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
         float x1,
         float y1,
@@ -252,27 +295,26 @@ public class FloatQuadTree<T>
         float y2)
     {
         var listOut = new List<T>();
+        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
+
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<float>(_rootNode), bounds);
+
         if (_tempSize < _eleBounds.Count)
         {
             _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     listOut.Add(items[element]!);
                     _temp[element] = true;
@@ -280,6 +322,9 @@ public class FloatQuadTree<T>
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
+
+
+        leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
             _temp[listOut[j].QuadTreeId] = false;
@@ -287,7 +332,19 @@ public class FloatQuadTree<T>
         return listOut;
     }
 
-    public IntList Query(
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    /// <returns>List of items which intersect the bounds.</returns>
+      public IntList Query(
         float x1,
         float y1,
         float x2,
@@ -295,9 +352,10 @@ public class FloatQuadTree<T>
         Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
+        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<float>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.Count)
         {
@@ -307,20 +365,16 @@ public class FloatQuadTree<T>
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -335,6 +389,8 @@ public class FloatQuadTree<T>
                 break;
         }
 
+        leaves.Return();
+
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
@@ -342,32 +398,41 @@ public class FloatQuadTree<T>
         return intListOut;
     }
 
-    public void Walk(
+         /// <summary>
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    public unsafe void Walk(
         float x1,
         float y1,
         float x2,
         float y2,
         Func<T, bool> callback)
     {
+        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<float>(_rootNode), bounds);
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            int element;
             while (eltNodeIndex != -1)
             {
-                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -379,115 +444,97 @@ public class FloatQuadTree<T>
             if(cancel)
                 break;
         }
+
+        leaves.Return();
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        in float l1,
-        in float t1,
-        in float r1,
-        in float b1,
-        in float l2, 
-        in float t2,
-        in float r2,
-        in float b2)
+        ReadOnlySpan<float> b1,
+        ReadOnlySpan<float> b2)
     {
-        return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
+        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
+               && b2[_eltIdxRgt] >= b1[_eltIdxLft]
+               && b2[_eltIdxTop] <= b1[_eltIdxBtm]
+               && b2[_eltIdxBtm] >= b1[_eltIdxTop];
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void PushNode(FloatList nodes, int ndIndex, int ndDepth, float ndMx, float ndMy, float ndSx, float ndSy)
     {
-        var backIdx = nodes.PushBack();
-        nodes.Set(backIdx, _ndIdxMx, ndMx);
-        nodes.Set(backIdx, _ndIdxMy, ndMy);
-        nodes.Set(backIdx, _ndIdxSx, ndSx);
-        nodes.Set(backIdx, _ndIdxSy, ndSy);
-        nodes.Set(backIdx, _ndIdxIndex, ndIndex);
-        nodes.Set(backIdx, _ndIdxDepth, ndDepth);
+        nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-
-    private FloatList find_leaves(
-        int node, 
-        int depth,
-        float mx,
-        float my,
-        float sx, 
-        float sy,
-        float lft,
-        float top,
-        float rgt, 
-        float btm)
+    private CachingFloatList.Item find_leaves(
+        ReadOnlySpan<float> data,
+        ReadOnlySpan<float> bounds)
     {
-        var leaves = new FloatList(_ndNum);
-        var toProcess = new FloatList(_ndNum);
-        PushNode(toProcess, node, depth, mx, my, sx, sy);
+        var leaves = _listCache.Get(_ndNum, 30);
+        var toProcess = _listCache.Get(_ndNum, 30);
+        toProcess.List.PushBack(data);
 
-        while (toProcess.Count > 0)
+        while (toProcess.List.Count > 0)
         {
-            int backIdx = toProcess.Count - 1;
-            var ndMx = toProcess.Get(backIdx, _ndIdxMx);
-            var ndMy = toProcess.Get(backIdx, _ndIdxMy);
-            var ndSx = toProcess.Get(backIdx, _ndIdxSx);
-            var ndSy = toProcess.Get(backIdx, _ndIdxSy);
-            int ndIndex = toProcess.GetInt(backIdx, _ndIdxIndex);
-            int ndDepth = toProcess.GetInt(backIdx, _ndIdxDepth);
-            toProcess.PopBack();
+            int backIdx = toProcess.List.Count - 1;
+            var ndData = toProcess.List.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcess.List.PopBack();
 
             // If this node is a leaf, insert it to the list.
             if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
-                PushNode(leaves, ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy);
+                leaves.List.PushBack(ndData);
             else
             {
                 // Otherwise push the children that intersect the rectangle.
                 int fc = _nodes.Get(ndIndex, _nodeIdxFc);
-                float hx = ndSx / 2, hy = ndSy / 2;
-                float l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = ndData[_ndIdxMx] - hx;
+                var t = ndData[_ndIdxMy] - hx;
+                var r = ndData[_ndIdxMx] + hx;
+                var b = ndData[_ndIdxMy] + hy;
 
-                if (top <= ndMy)
+                if (bounds[_eltIdxTop] <= ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 0, ndDepth + 1, l, t, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 1, ndDepth + 1, r, t, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
                 }
-                if (btm > ndMy)
+
+                if (bounds[_eltIdxBtm] > ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 2, ndDepth + 1, l, b, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 3, ndDepth + 1, r, b, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
                 }
             }
         }
         return leaves;
     }
 
-    private void node_insert(int index, int depth, float mx, float my, float sx, float sy, int element)
+    private void node_insert(ReadOnlySpan<float> data, ReadOnlySpan<float> elementBounds, int elementId)
     {
-        // Find the leaves and insert the element to all the leaves found.
-        var lft = _eleBounds.Get(element, _eltIdxLft);
-        var top = _eleBounds.Get(element, _eltIdxTop);
-        var rgt = _eleBounds.Get(element, _eltIdxRgt);
-        var btm = _eleBounds.Get(element, _eltIdxBtm);
-        var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
+        var leaves = find_leaves(data, elementBounds);
 
-        for (int j = 0; j < leaves.Count; ++j)
-        {
-            var ndMx = leaves.Get(j, _ndIdxMx);
-            var ndMy = leaves.Get(j, _ndIdxMy);
-            var ndSx = leaves.Get(j, _ndIdxSx);
-            var ndSy = leaves.Get(j, _ndIdxSy);
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
-            int ndDepth = (int)leaves.Get(j, _ndIdxDepth);
-            leaf_insert(ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy, element);
-        }
+        for (int j = 0; j < leaves.List.Count; ++j)
+            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+
+        leaves.Return();
     }
 
-    private void leaf_insert(int node, int depth, float mx, float my, float sx, float sy, int element)
+    private void leaf_insert(int element, ReadOnlySpan<float> data)
     {
+        var node = (int)data[_ndIdxIndex];
+        var depth = (int)data[_ndIdxDepth];
+
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
+
         _nodes.Set(node, _nodeIdxFc, _eleNodes.Insert());
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxNext, ndFc);
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxElt, element);
@@ -528,7 +575,10 @@ public class FloatQuadTree<T>
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
             for (int j = 0; j < elts.Count; ++j)
-                node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
+            {
+                var id = elts.GetInt(j, 0);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
+            }
         }
         else
         {
@@ -626,9 +676,27 @@ public class LongQuadTree<T>
 
     private T?[] items;
 
+    private readonly long[] _rootNode;
+
+    private readonly CachingLongList _listCache = new CachingLongList();
+
+    /// <summary>
+    /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
+    /// </summary>
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
-    // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
+    /// <summary>
+    /// Creates a quadtree with the requested extents, maximum elements per leaf,
+    /// and maximum tree depth and maximum capacity.
+    /// </summary>
+    /// <param name="width">Width extents of the root node.</param>
+    /// <param name="height">Height extents of the root node.</param>
+    /// <param name="startMaxElements">
+    /// Maximum allowed elements in a leaf before the leaf is subdivided/split unless
+    /// the leaf is at the maximum allowed tree depth.
+    /// </param>
+    /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
+    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
     public LongQuadTree(long width, long height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -645,51 +713,66 @@ public class LongQuadTree<T>
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootMx = width / 2;
-        _rootMy = height / 2;
-        _rootSx = _rootMx;
-        _rootSy = _rootMy;
+        _rootNode = new[]
+        {
+            width / 2, // _ndIdxMx
+            height / 2, // _ndIdxMy
+            width / 2, // _ndIdxSx
+            height / 2, // _ndIdxSy
+            0, // _ndIdxIndex
+            0 // _ndIdxDepth
+        };
     }
 
-    // Outputs a list of elements found in the specified rectangle.
+    /// <summary>
+    /// Inserts an item into the quad tree at with the specified bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="item">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
     public int Insert(long x1, long y1, long x2, long y2, T item)
     {
-        // Insert a new element.
-        var newElement = _eleBounds.Insert();
+        if (item.QuadTreeId != -1)
+            return -1;
 
+        ReadOnlySpan<long> bounds = stackalloc[] { x1, y1, x2, y2 };
+        // Insert a new element.                   
+        var newElement = _eleBounds.Insert(bounds);  
+                                                   
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = item;
-        // Set the fields of the new element.
-        _eleBounds.Set(newElement, _eltIdxLft, x1);
-        _eleBounds.Set(newElement, _eltIdxTop, y1);
-        _eleBounds.Set(newElement, _eltIdxRgt, x2);
-        _eleBounds.Set(newElement, _eltIdxBtm, y2);
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
+        node_insert(new ReadOnlySpan<long>(_rootNode), bounds, newElement);
         item.QuadTreeId = newElement;
         return newElement;
     }
 
-    // Removes the specified element from the tree.
-    public void Remove(T element)
+    /// <summary>
+    /// Removes the specified element from the tree.
+    /// </summary>
+    /// <param name="element">Element to remove.</param>
+        public void Remove(T element)
     {
         // Find the leaves.
-        var lft = _eleBounds.Get(element.QuadTreeId, _eltIdxLft);
-        var top = _eleBounds.Get(element.QuadTreeId, _eltIdxTop);
-        var rgt = _eleBounds.Get(element.QuadTreeId, _eltIdxRgt);
-        var btm = _eleBounds.Get(element.QuadTreeId, _eltIdxBtm);
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
+        var leaves = find_leaves(
+            new ReadOnlySpan<long>(_rootNode),
+            _eleBounds.Get(element.QuadTreeId, 0, 4));
+
+        int nodeIndex, ndIndex;
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != element.QuadTreeId)
             {
@@ -711,7 +794,7 @@ public class LongQuadTree<T>
                 _nodes.Decrement(ndIndex, _nodeIdxNum);
             }
         }
-
+        leaves.Return();
         // Remove the element.
         _eleBounds.Erase(element.QuadTreeId);
         items[element.QuadTreeId] = default;
@@ -719,7 +802,9 @@ public class LongQuadTree<T>
 
     }
 
-    // Cleans up the tree, removing empty leaves.
+    /// <summary>
+    /// Cleans up the tree, removing empty leaves.
+    /// </summary>
     public void Cleanup()
     {
         IntList toProcess = new IntList(1);
@@ -775,6 +860,14 @@ public class LongQuadTree<T>
         }
     }
 
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
         long x1,
         long y1,
@@ -782,27 +875,26 @@ public class LongQuadTree<T>
         long y2)
     {
         var listOut = new List<T>();
+        ReadOnlySpan<long> bounds = stackalloc[] { x1, y1, x2, y2 };
+
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<long>(_rootNode), bounds);
+
         if (_tempSize < _eleBounds.Count)
         {
             _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     listOut.Add(items[element]!);
                     _temp[element] = true;
@@ -810,6 +902,9 @@ public class LongQuadTree<T>
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
+
+
+        leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
             _temp[listOut[j].QuadTreeId] = false;
@@ -817,7 +912,19 @@ public class LongQuadTree<T>
         return listOut;
     }
 
-    public IntList Query(
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    /// <returns>List of items which intersect the bounds.</returns>
+      public IntList Query(
         long x1,
         long y1,
         long x2,
@@ -825,9 +932,10 @@ public class LongQuadTree<T>
         Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
+        ReadOnlySpan<long> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<long>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.Count)
         {
@@ -837,20 +945,16 @@ public class LongQuadTree<T>
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -865,6 +969,8 @@ public class LongQuadTree<T>
                 break;
         }
 
+        leaves.Return();
+
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
@@ -872,32 +978,41 @@ public class LongQuadTree<T>
         return intListOut;
     }
 
-    public void Walk(
+         /// <summary>
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    public unsafe void Walk(
         long x1,
         long y1,
         long x2,
         long y2,
         Func<T, bool> callback)
     {
+        ReadOnlySpan<long> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<long>(_rootNode), bounds);
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            int element;
             while (eltNodeIndex != -1)
             {
-                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -909,115 +1024,97 @@ public class LongQuadTree<T>
             if(cancel)
                 break;
         }
+
+        leaves.Return();
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        in long l1,
-        in long t1,
-        in long r1,
-        in long b1,
-        in long l2, 
-        in long t2,
-        in long r2,
-        in long b2)
+        ReadOnlySpan<long> b1,
+        ReadOnlySpan<long> b2)
     {
-        return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
+        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
+               && b2[_eltIdxRgt] >= b1[_eltIdxLft]
+               && b2[_eltIdxTop] <= b1[_eltIdxBtm]
+               && b2[_eltIdxBtm] >= b1[_eltIdxTop];
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void PushNode(LongList nodes, int ndIndex, int ndDepth, long ndMx, long ndMy, long ndSx, long ndSy)
     {
-        var backIdx = nodes.PushBack();
-        nodes.Set(backIdx, _ndIdxMx, ndMx);
-        nodes.Set(backIdx, _ndIdxMy, ndMy);
-        nodes.Set(backIdx, _ndIdxSx, ndSx);
-        nodes.Set(backIdx, _ndIdxSy, ndSy);
-        nodes.Set(backIdx, _ndIdxIndex, ndIndex);
-        nodes.Set(backIdx, _ndIdxDepth, ndDepth);
+        nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-
-    private LongList find_leaves(
-        int node, 
-        int depth,
-        long mx,
-        long my,
-        long sx, 
-        long sy,
-        long lft,
-        long top,
-        long rgt, 
-        long btm)
+    private CachingLongList.Item find_leaves(
+        ReadOnlySpan<long> data,
+        ReadOnlySpan<long> bounds)
     {
-        var leaves = new LongList(_ndNum);
-        var toProcess = new LongList(_ndNum);
-        PushNode(toProcess, node, depth, mx, my, sx, sy);
+        var leaves = _listCache.Get(_ndNum, 30);
+        var toProcess = _listCache.Get(_ndNum, 30);
+        toProcess.List.PushBack(data);
 
-        while (toProcess.Count > 0)
+        while (toProcess.List.Count > 0)
         {
-            int backIdx = toProcess.Count - 1;
-            var ndMx = toProcess.Get(backIdx, _ndIdxMx);
-            var ndMy = toProcess.Get(backIdx, _ndIdxMy);
-            var ndSx = toProcess.Get(backIdx, _ndIdxSx);
-            var ndSy = toProcess.Get(backIdx, _ndIdxSy);
-            int ndIndex = toProcess.GetInt(backIdx, _ndIdxIndex);
-            int ndDepth = toProcess.GetInt(backIdx, _ndIdxDepth);
-            toProcess.PopBack();
+            int backIdx = toProcess.List.Count - 1;
+            var ndData = toProcess.List.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcess.List.PopBack();
 
             // If this node is a leaf, insert it to the list.
             if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
-                PushNode(leaves, ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy);
+                leaves.List.PushBack(ndData);
             else
             {
                 // Otherwise push the children that intersect the rectangle.
                 int fc = _nodes.Get(ndIndex, _nodeIdxFc);
-                long hx = ndSx / 2, hy = ndSy / 2;
-                long l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = ndData[_ndIdxMx] - hx;
+                var t = ndData[_ndIdxMy] - hx;
+                var r = ndData[_ndIdxMx] + hx;
+                var b = ndData[_ndIdxMy] + hy;
 
-                if (top <= ndMy)
+                if (bounds[_eltIdxTop] <= ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 0, ndDepth + 1, l, t, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 1, ndDepth + 1, r, t, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
                 }
-                if (btm > ndMy)
+
+                if (bounds[_eltIdxBtm] > ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 2, ndDepth + 1, l, b, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 3, ndDepth + 1, r, b, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
                 }
             }
         }
         return leaves;
     }
 
-    private void node_insert(int index, int depth, long mx, long my, long sx, long sy, int element)
+    private void node_insert(ReadOnlySpan<long> data, ReadOnlySpan<long> elementBounds, int elementId)
     {
-        // Find the leaves and insert the element to all the leaves found.
-        var lft = _eleBounds.Get(element, _eltIdxLft);
-        var top = _eleBounds.Get(element, _eltIdxTop);
-        var rgt = _eleBounds.Get(element, _eltIdxRgt);
-        var btm = _eleBounds.Get(element, _eltIdxBtm);
-        var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
+        var leaves = find_leaves(data, elementBounds);
 
-        for (int j = 0; j < leaves.Count; ++j)
-        {
-            var ndMx = leaves.Get(j, _ndIdxMx);
-            var ndMy = leaves.Get(j, _ndIdxMy);
-            var ndSx = leaves.Get(j, _ndIdxSx);
-            var ndSy = leaves.Get(j, _ndIdxSy);
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
-            int ndDepth = (int)leaves.Get(j, _ndIdxDepth);
-            leaf_insert(ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy, element);
-        }
+        for (int j = 0; j < leaves.List.Count; ++j)
+            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+
+        leaves.Return();
     }
 
-    private void leaf_insert(int node, int depth, long mx, long my, long sx, long sy, int element)
+    private void leaf_insert(int element, ReadOnlySpan<long> data)
     {
+        var node = (int)data[_ndIdxIndex];
+        var depth = (int)data[_ndIdxDepth];
+
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
+
         _nodes.Set(node, _nodeIdxFc, _eleNodes.Insert());
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxNext, ndFc);
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxElt, element);
@@ -1058,7 +1155,10 @@ public class LongQuadTree<T>
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
             for (int j = 0; j < elts.Count; ++j)
-                node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
+            {
+                var id = elts.GetInt(j, 0);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
+            }
         }
         else
         {
@@ -1156,9 +1256,27 @@ public class IntQuadTree<T>
 
     private T?[] items;
 
+    private readonly int[] _rootNode;
+
+    private readonly CachingIntList _listCache = new CachingIntList();
+
+    /// <summary>
+    /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
+    /// </summary>
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
-    // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
+    /// <summary>
+    /// Creates a quadtree with the requested extents, maximum elements per leaf,
+    /// and maximum tree depth and maximum capacity.
+    /// </summary>
+    /// <param name="width">Width extents of the root node.</param>
+    /// <param name="height">Height extents of the root node.</param>
+    /// <param name="startMaxElements">
+    /// Maximum allowed elements in a leaf before the leaf is subdivided/split unless
+    /// the leaf is at the maximum allowed tree depth.
+    /// </param>
+    /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
+    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
     public IntQuadTree(int width, int height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -1175,51 +1293,66 @@ public class IntQuadTree<T>
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootMx = width / 2;
-        _rootMy = height / 2;
-        _rootSx = _rootMx;
-        _rootSy = _rootMy;
+        _rootNode = new[]
+        {
+            width / 2, // _ndIdxMx
+            height / 2, // _ndIdxMy
+            width / 2, // _ndIdxSx
+            height / 2, // _ndIdxSy
+            0, // _ndIdxIndex
+            0 // _ndIdxDepth
+        };
     }
 
-    // Outputs a list of elements found in the specified rectangle.
+    /// <summary>
+    /// Inserts an item into the quad tree at with the specified bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="item">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
     public int Insert(int x1, int y1, int x2, int y2, T item)
     {
-        // Insert a new element.
-        var newElement = _eleBounds.Insert();
+        if (item.QuadTreeId != -1)
+            return -1;
 
+        ReadOnlySpan<int> bounds = stackalloc[] { x1, y1, x2, y2 };
+        // Insert a new element.                   
+        var newElement = _eleBounds.Insert(bounds);  
+                                                   
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = item;
-        // Set the fields of the new element.
-        _eleBounds.Set(newElement, _eltIdxLft, x1);
-        _eleBounds.Set(newElement, _eltIdxTop, y1);
-        _eleBounds.Set(newElement, _eltIdxRgt, x2);
-        _eleBounds.Set(newElement, _eltIdxBtm, y2);
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
+        node_insert(new ReadOnlySpan<int>(_rootNode), bounds, newElement);
         item.QuadTreeId = newElement;
         return newElement;
     }
 
-    // Removes the specified element from the tree.
-    public void Remove(T element)
+    /// <summary>
+    /// Removes the specified element from the tree.
+    /// </summary>
+    /// <param name="element">Element to remove.</param>
+        public void Remove(T element)
     {
         // Find the leaves.
-        var lft = _eleBounds.Get(element.QuadTreeId, _eltIdxLft);
-        var top = _eleBounds.Get(element.QuadTreeId, _eltIdxTop);
-        var rgt = _eleBounds.Get(element.QuadTreeId, _eltIdxRgt);
-        var btm = _eleBounds.Get(element.QuadTreeId, _eltIdxBtm);
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
+        var leaves = find_leaves(
+            new ReadOnlySpan<int>(_rootNode),
+            _eleBounds.Get(element.QuadTreeId, 0, 4));
+
+        int nodeIndex, ndIndex;
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != element.QuadTreeId)
             {
@@ -1241,7 +1374,7 @@ public class IntQuadTree<T>
                 _nodes.Decrement(ndIndex, _nodeIdxNum);
             }
         }
-
+        leaves.Return();
         // Remove the element.
         _eleBounds.Erase(element.QuadTreeId);
         items[element.QuadTreeId] = default;
@@ -1249,7 +1382,9 @@ public class IntQuadTree<T>
 
     }
 
-    // Cleans up the tree, removing empty leaves.
+    /// <summary>
+    /// Cleans up the tree, removing empty leaves.
+    /// </summary>
     public void Cleanup()
     {
         IntList toProcess = new IntList(1);
@@ -1305,6 +1440,14 @@ public class IntQuadTree<T>
         }
     }
 
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
         int x1,
         int y1,
@@ -1312,27 +1455,26 @@ public class IntQuadTree<T>
         int y2)
     {
         var listOut = new List<T>();
+        ReadOnlySpan<int> bounds = stackalloc[] { x1, y1, x2, y2 };
+
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<int>(_rootNode), bounds);
+
         if (_tempSize < _eleBounds.Count)
         {
             _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     listOut.Add(items[element]!);
                     _temp[element] = true;
@@ -1340,6 +1482,9 @@ public class IntQuadTree<T>
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
+
+
+        leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
             _temp[listOut[j].QuadTreeId] = false;
@@ -1347,7 +1492,19 @@ public class IntQuadTree<T>
         return listOut;
     }
 
-    public IntList Query(
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    /// <returns>List of items which intersect the bounds.</returns>
+      public IntList Query(
         int x1,
         int y1,
         int x2,
@@ -1355,9 +1512,10 @@ public class IntQuadTree<T>
         Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
+        ReadOnlySpan<int> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<int>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.Count)
         {
@@ -1367,20 +1525,16 @@ public class IntQuadTree<T>
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -1395,6 +1549,8 @@ public class IntQuadTree<T>
                 break;
         }
 
+        leaves.Return();
+
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
@@ -1402,32 +1558,41 @@ public class IntQuadTree<T>
         return intListOut;
     }
 
-    public void Walk(
+         /// <summary>
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    public unsafe void Walk(
         int x1,
         int y1,
         int x2,
         int y2,
         Func<T, bool> callback)
     {
+        ReadOnlySpan<int> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<int>(_rootNode), bounds);
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            int element;
             while (eltNodeIndex != -1)
             {
-                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -1439,115 +1604,97 @@ public class IntQuadTree<T>
             if(cancel)
                 break;
         }
+
+        leaves.Return();
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        in int l1,
-        in int t1,
-        in int r1,
-        in int b1,
-        in int l2, 
-        in int t2,
-        in int r2,
-        in int b2)
+        ReadOnlySpan<int> b1,
+        ReadOnlySpan<int> b2)
     {
-        return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
+        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
+               && b2[_eltIdxRgt] >= b1[_eltIdxLft]
+               && b2[_eltIdxTop] <= b1[_eltIdxBtm]
+               && b2[_eltIdxBtm] >= b1[_eltIdxTop];
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void PushNode(IntList nodes, int ndIndex, int ndDepth, int ndMx, int ndMy, int ndSx, int ndSy)
     {
-        var backIdx = nodes.PushBack();
-        nodes.Set(backIdx, _ndIdxMx, ndMx);
-        nodes.Set(backIdx, _ndIdxMy, ndMy);
-        nodes.Set(backIdx, _ndIdxSx, ndSx);
-        nodes.Set(backIdx, _ndIdxSy, ndSy);
-        nodes.Set(backIdx, _ndIdxIndex, ndIndex);
-        nodes.Set(backIdx, _ndIdxDepth, ndDepth);
+        nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-
-    private IntList find_leaves(
-        int node, 
-        int depth,
-        int mx,
-        int my,
-        int sx, 
-        int sy,
-        int lft,
-        int top,
-        int rgt, 
-        int btm)
+    private CachingIntList.Item find_leaves(
+        ReadOnlySpan<int> data,
+        ReadOnlySpan<int> bounds)
     {
-        var leaves = new IntList(_ndNum);
-        var toProcess = new IntList(_ndNum);
-        PushNode(toProcess, node, depth, mx, my, sx, sy);
+        var leaves = _listCache.Get(_ndNum, 30);
+        var toProcess = _listCache.Get(_ndNum, 30);
+        toProcess.List.PushBack(data);
 
-        while (toProcess.Count > 0)
+        while (toProcess.List.Count > 0)
         {
-            int backIdx = toProcess.Count - 1;
-            var ndMx = toProcess.Get(backIdx, _ndIdxMx);
-            var ndMy = toProcess.Get(backIdx, _ndIdxMy);
-            var ndSx = toProcess.Get(backIdx, _ndIdxSx);
-            var ndSy = toProcess.Get(backIdx, _ndIdxSy);
-            int ndIndex = toProcess.GetInt(backIdx, _ndIdxIndex);
-            int ndDepth = toProcess.GetInt(backIdx, _ndIdxDepth);
-            toProcess.PopBack();
+            int backIdx = toProcess.List.Count - 1;
+            var ndData = toProcess.List.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcess.List.PopBack();
 
             // If this node is a leaf, insert it to the list.
             if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
-                PushNode(leaves, ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy);
+                leaves.List.PushBack(ndData);
             else
             {
                 // Otherwise push the children that intersect the rectangle.
                 int fc = _nodes.Get(ndIndex, _nodeIdxFc);
-                int hx = ndSx / 2, hy = ndSy / 2;
-                int l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = ndData[_ndIdxMx] - hx;
+                var t = ndData[_ndIdxMy] - hx;
+                var r = ndData[_ndIdxMx] + hx;
+                var b = ndData[_ndIdxMy] + hy;
 
-                if (top <= ndMy)
+                if (bounds[_eltIdxTop] <= ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 0, ndDepth + 1, l, t, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 1, ndDepth + 1, r, t, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
                 }
-                if (btm > ndMy)
+
+                if (bounds[_eltIdxBtm] > ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 2, ndDepth + 1, l, b, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 3, ndDepth + 1, r, b, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
                 }
             }
         }
         return leaves;
     }
 
-    private void node_insert(int index, int depth, int mx, int my, int sx, int sy, int element)
+    private void node_insert(ReadOnlySpan<int> data, ReadOnlySpan<int> elementBounds, int elementId)
     {
-        // Find the leaves and insert the element to all the leaves found.
-        var lft = _eleBounds.Get(element, _eltIdxLft);
-        var top = _eleBounds.Get(element, _eltIdxTop);
-        var rgt = _eleBounds.Get(element, _eltIdxRgt);
-        var btm = _eleBounds.Get(element, _eltIdxBtm);
-        var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
+        var leaves = find_leaves(data, elementBounds);
 
-        for (int j = 0; j < leaves.Count; ++j)
-        {
-            var ndMx = leaves.Get(j, _ndIdxMx);
-            var ndMy = leaves.Get(j, _ndIdxMy);
-            var ndSx = leaves.Get(j, _ndIdxSx);
-            var ndSy = leaves.Get(j, _ndIdxSy);
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
-            int ndDepth = (int)leaves.Get(j, _ndIdxDepth);
-            leaf_insert(ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy, element);
-        }
+        for (int j = 0; j < leaves.List.Count; ++j)
+            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+
+        leaves.Return();
     }
 
-    private void leaf_insert(int node, int depth, int mx, int my, int sx, int sy, int element)
+    private void leaf_insert(int element, ReadOnlySpan<int> data)
     {
+        var node = (int)data[_ndIdxIndex];
+        var depth = (int)data[_ndIdxDepth];
+
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
+
         _nodes.Set(node, _nodeIdxFc, _eleNodes.Insert());
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxNext, ndFc);
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxElt, element);
@@ -1588,7 +1735,10 @@ public class IntQuadTree<T>
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
             for (int j = 0; j < elts.Count; ++j)
-                node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
+            {
+                var id = elts.GetInt(j, 0);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
+            }
         }
         else
         {
@@ -1686,9 +1836,27 @@ public class DoubleQuadTree<T>
 
     private T?[] items;
 
+    private readonly double[] _rootNode;
+
+    private readonly CachingDoubleList _listCache = new CachingDoubleList();
+
+    /// <summary>
+    /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
+    /// </summary>
     public ReadOnlySpan<T> Items => new ReadOnlySpan<T>(items);
 
-    // Creates a quadtree with the requested extents, maximum elements per leaf, and maximum tree depth.
+    /// <summary>
+    /// Creates a quadtree with the requested extents, maximum elements per leaf,
+    /// and maximum tree depth and maximum capacity.
+    /// </summary>
+    /// <param name="width">Width extents of the root node.</param>
+    /// <param name="height">Height extents of the root node.</param>
+    /// <param name="startMaxElements">
+    /// Maximum allowed elements in a leaf before the leaf is subdivided/split unless
+    /// the leaf is at the maximum allowed tree depth.
+    /// </param>
+    /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
+    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
     public DoubleQuadTree(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -1705,51 +1873,66 @@ public class DoubleQuadTree<T>
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootMx = width / 2;
-        _rootMy = height / 2;
-        _rootSx = _rootMx;
-        _rootSy = _rootMy;
+        _rootNode = new[]
+        {
+            width / 2, // _ndIdxMx
+            height / 2, // _ndIdxMy
+            width / 2, // _ndIdxSx
+            height / 2, // _ndIdxSy
+            0, // _ndIdxIndex
+            0 // _ndIdxDepth
+        };
     }
 
-    // Outputs a list of elements found in the specified rectangle.
+    /// <summary>
+    /// Inserts an item into the quad tree at with the specified bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="item">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
     public int Insert(double x1, double y1, double x2, double y2, T item)
     {
-        // Insert a new element.
-        var newElement = _eleBounds.Insert();
+        if (item.QuadTreeId != -1)
+            return -1;
 
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+        // Insert a new element.                   
+        var newElement = _eleBounds.Insert(bounds);  
+                                                   
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = item;
-        // Set the fields of the new element.
-        _eleBounds.Set(newElement, _eltIdxLft, x1);
-        _eleBounds.Set(newElement, _eltIdxTop, y1);
-        _eleBounds.Set(newElement, _eltIdxRgt, x2);
-        _eleBounds.Set(newElement, _eltIdxBtm, y2);
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, newElement);
+        node_insert(new ReadOnlySpan<double>(_rootNode), bounds, newElement);
         item.QuadTreeId = newElement;
         return newElement;
     }
 
-    // Removes the specified element from the tree.
-    public void Remove(T element)
+    /// <summary>
+    /// Removes the specified element from the tree.
+    /// </summary>
+    /// <param name="element">Element to remove.</param>
+        public void Remove(T element)
     {
         // Find the leaves.
-        var lft = _eleBounds.Get(element.QuadTreeId, _eltIdxLft);
-        var top = _eleBounds.Get(element.QuadTreeId, _eltIdxTop);
-        var rgt = _eleBounds.Get(element.QuadTreeId, _eltIdxRgt);
-        var btm = _eleBounds.Get(element.QuadTreeId, _eltIdxBtm);
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, lft, top, rgt, btm);
+        var leaves = find_leaves(
+            new ReadOnlySpan<double>(_rootNode),
+            _eleBounds.Get(element.QuadTreeId, 0, 4));
+
+        int nodeIndex, ndIndex;
 
         // For each leaf node, remove the element node.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            var ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != element.QuadTreeId)
             {
@@ -1771,7 +1954,7 @@ public class DoubleQuadTree<T>
                 _nodes.Decrement(ndIndex, _nodeIdxNum);
             }
         }
-
+        leaves.Return();
         // Remove the element.
         _eleBounds.Erase(element.QuadTreeId);
         items[element.QuadTreeId] = default;
@@ -1779,7 +1962,9 @@ public class DoubleQuadTree<T>
 
     }
 
-    // Cleans up the tree, removing empty leaves.
+    /// <summary>
+    /// Cleans up the tree, removing empty leaves.
+    /// </summary>
     public void Cleanup()
     {
         IntList toProcess = new IntList(1);
@@ -1835,6 +2020,14 @@ public class DoubleQuadTree<T>
         }
     }
 
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
         double x1,
         double y1,
@@ -1842,27 +2035,26 @@ public class DoubleQuadTree<T>
         double y2)
     {
         var listOut = new List<T>();
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
+
         if (_tempSize < _eleBounds.Count)
         {
             _tempSize = _eleBounds.Count;
             _temp = new bool[_tempSize];
         }
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     listOut.Add(items[element]!);
                     _temp[element] = true;
@@ -1870,6 +2062,9 @@ public class DoubleQuadTree<T>
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
         }
+
+
+        leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
             _temp[listOut[j].QuadTreeId] = false;
@@ -1877,7 +2072,19 @@ public class DoubleQuadTree<T>
         return listOut;
     }
 
-    public IntList Query(
+    /// <summary>
+    /// Queries the QuadTree and returns a list of the items which intersect the passed bounds.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    /// <returns>List of items which intersect the bounds.</returns>
+      public IntList Query(
         double x1,
         double y1,
         double x2,
@@ -1885,9 +2092,10 @@ public class DoubleQuadTree<T>
         Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.Count)
         {
@@ -1897,20 +2105,16 @@ public class DoubleQuadTree<T>
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (!_temp[element] && Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -1925,6 +2129,8 @@ public class DoubleQuadTree<T>
                 break;
         }
 
+        leaves.Return();
+
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.Count; ++j)
             _temp[intListOut.Get(j, 0)] = false;
@@ -1932,32 +2138,41 @@ public class DoubleQuadTree<T>
         return intListOut;
     }
 
-    public void Walk(
+         /// <summary>
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// </summary>
+    /// <param name="x1">Min X</param>
+    /// <param name="y1">Min Y</param>
+    /// <param name="x2">Max X</param>
+    /// <param name="y2">Max Y</param>
+    /// <param name="callback">
+    /// Callback which is invoked on each found item.
+    /// Return true to continue searching, false to stop.
+    /// </param>
+    public unsafe void Walk(
         double x1,
         double y1,
         double x2,
         double y2,
         Func<T, bool> callback)
     {
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(0, 0, _rootMx, _rootMy, _rootSx, _rootSy, x1, y1, x2, y2);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
 
         bool cancel = false;
         // For each leaf node, look for elements that intersect.
-        for (int j = 0; j < leaves.Count; ++j)
+        for (int j = 0; j < leaves.List.Count; ++j)
         {
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
+            int ndIndex = (int)leaves.List.Get(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            int element;
             while (eltNodeIndex != -1)
             {
-                int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                var lft = _eleBounds.Get(element, _eltIdxLft);
-                var top = _eleBounds.Get(element, _eltIdxTop);
-                var rgt = _eleBounds.Get(element, _eltIdxRgt);
-                var btm = _eleBounds.Get(element, _eltIdxBtm);
-                if (Intersect(x1, y1, x2, y2, lft, top, rgt, btm))
+                element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
+                if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
                     cancel = !callback.Invoke(items[element]!);
                     if(cancel)
@@ -1969,115 +2184,97 @@ public class DoubleQuadTree<T>
             if(cancel)
                 break;
         }
+
+        leaves.Return();
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        in double l1,
-        in double t1,
-        in double r1,
-        in double b1,
-        in double l2, 
-        in double t2,
-        in double r2,
-        in double b2)
+        ReadOnlySpan<double> b1,
+        ReadOnlySpan<double> b2)
     {
-        return l2 <= r1 && r2 >= l1 && t2 <= b1 && b2 >= t1;
+        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
+               && b2[_eltIdxRgt] >= b1[_eltIdxLft]
+               && b2[_eltIdxTop] <= b1[_eltIdxBtm]
+               && b2[_eltIdxBtm] >= b1[_eltIdxTop];
     }
+
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void PushNode(DoubleList nodes, int ndIndex, int ndDepth, double ndMx, double ndMy, double ndSx, double ndSy)
     {
-        var backIdx = nodes.PushBack();
-        nodes.Set(backIdx, _ndIdxMx, ndMx);
-        nodes.Set(backIdx, _ndIdxMy, ndMy);
-        nodes.Set(backIdx, _ndIdxSx, ndSx);
-        nodes.Set(backIdx, _ndIdxSy, ndSy);
-        nodes.Set(backIdx, _ndIdxIndex, ndIndex);
-        nodes.Set(backIdx, _ndIdxDepth, ndDepth);
+        nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-
-    private DoubleList find_leaves(
-        int node, 
-        int depth,
-        double mx,
-        double my,
-        double sx, 
-        double sy,
-        double lft,
-        double top,
-        double rgt, 
-        double btm)
+    private CachingDoubleList.Item find_leaves(
+        ReadOnlySpan<double> data,
+        ReadOnlySpan<double> bounds)
     {
-        var leaves = new DoubleList(_ndNum);
-        var toProcess = new DoubleList(_ndNum);
-        PushNode(toProcess, node, depth, mx, my, sx, sy);
+        var leaves = _listCache.Get(_ndNum, 30);
+        var toProcess = _listCache.Get(_ndNum, 30);
+        toProcess.List.PushBack(data);
 
-        while (toProcess.Count > 0)
+        while (toProcess.List.Count > 0)
         {
-            int backIdx = toProcess.Count - 1;
-            var ndMx = toProcess.Get(backIdx, _ndIdxMx);
-            var ndMy = toProcess.Get(backIdx, _ndIdxMy);
-            var ndSx = toProcess.Get(backIdx, _ndIdxSx);
-            var ndSy = toProcess.Get(backIdx, _ndIdxSy);
-            int ndIndex = toProcess.GetInt(backIdx, _ndIdxIndex);
-            int ndDepth = toProcess.GetInt(backIdx, _ndIdxDepth);
-            toProcess.PopBack();
+            int backIdx = toProcess.List.Count - 1;
+            var ndData = toProcess.List.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcess.List.PopBack();
 
             // If this node is a leaf, insert it to the list.
             if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
-                PushNode(leaves, ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy);
+                leaves.List.PushBack(ndData);
             else
             {
                 // Otherwise push the children that intersect the rectangle.
                 int fc = _nodes.Get(ndIndex, _nodeIdxFc);
-                double hx = ndSx / 2, hy = ndSy / 2;
-                double l = ndMx - hx, t = ndMy - hx, r = ndMx + hx, b = ndMy + hy;
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = ndData[_ndIdxMx] - hx;
+                var t = ndData[_ndIdxMy] - hx;
+                var r = ndData[_ndIdxMx] + hx;
+                var b = ndData[_ndIdxMy] + hy;
 
-                if (top <= ndMy)
+                if (bounds[_eltIdxTop] <= ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 0, ndDepth + 1, l, t, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 1, ndDepth + 1, r, t, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
                 }
-                if (btm > ndMy)
+
+                if (bounds[_eltIdxBtm] > ndData[_ndIdxMy])
                 {
-                    if (lft <= ndMx)
-                        PushNode(toProcess, fc + 2, ndDepth + 1, l, b, hx, hy);
-                    if (rgt > ndMx)
-                        PushNode(toProcess, fc + 3, ndDepth + 1, r, b, hx, hy);
+                    if (bounds[_eltIdxLft] <= ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    if (bounds[_eltIdxRgt] > ndData[_ndIdxMx])
+                        PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
                 }
             }
         }
         return leaves;
     }
 
-    private void node_insert(int index, int depth, double mx, double my, double sx, double sy, int element)
+    private void node_insert(ReadOnlySpan<double> data, ReadOnlySpan<double> elementBounds, int elementId)
     {
-        // Find the leaves and insert the element to all the leaves found.
-        var lft = _eleBounds.Get(element, _eltIdxLft);
-        var top = _eleBounds.Get(element, _eltIdxTop);
-        var rgt = _eleBounds.Get(element, _eltIdxRgt);
-        var btm = _eleBounds.Get(element, _eltIdxBtm);
-        var leaves = find_leaves(index, depth, mx, my, sx, sy, lft, top, rgt, btm);
+        var leaves = find_leaves(data, elementBounds);
 
-        for (int j = 0; j < leaves.Count; ++j)
-        {
-            var ndMx = leaves.Get(j, _ndIdxMx);
-            var ndMy = leaves.Get(j, _ndIdxMy);
-            var ndSx = leaves.Get(j, _ndIdxSx);
-            var ndSy = leaves.Get(j, _ndIdxSy);
-            int ndIndex = (int)leaves.Get(j, _ndIdxIndex);
-            int ndDepth = (int)leaves.Get(j, _ndIdxDepth);
-            leaf_insert(ndIndex, ndDepth, ndMx, ndMy, ndSx, ndSy, element);
-        }
+        for (int j = 0; j < leaves.List.Count; ++j)
+            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+
+        leaves.Return();
     }
 
-    private void leaf_insert(int node, int depth, double mx, double my, double sx, double sy, int element)
+    private void leaf_insert(int element, ReadOnlySpan<double> data)
     {
+        var node = (int)data[_ndIdxIndex];
+        var depth = (int)data[_ndIdxDepth];
+
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
+
         _nodes.Set(node, _nodeIdxFc, _eleNodes.Insert());
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxNext, ndFc);
         _eleNodes.Set(_nodes.Get(node, _nodeIdxFc), _enodeIdxElt, element);
@@ -2118,7 +2315,10 @@ public class DoubleQuadTree<T>
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
             for (int j = 0; j < elts.Count; ++j)
-                node_insert(node, depth, mx, my, sx, sy, (int)elts.Get(j, 0));
+            {
+                var id = elts.GetInt(j, 0);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
+            }
         }
         else
         {
