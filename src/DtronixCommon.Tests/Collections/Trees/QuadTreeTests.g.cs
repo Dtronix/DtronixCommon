@@ -56,7 +56,7 @@ public class FloatQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -131,7 +131,7 @@ public class LongQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -206,7 +206,7 @@ public class IntQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -281,7 +281,7 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]

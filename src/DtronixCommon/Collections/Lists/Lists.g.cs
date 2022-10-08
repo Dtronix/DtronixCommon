@@ -4,8 +4,10 @@
 // ----------------------------
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Collections.Concurrent;
 
 namespace DtronixCommon.Collections.Lists;
+
 
 /// <summary>
 /// List of float with varying size with a backing array.  Items erased are returned to be reused.
@@ -13,6 +15,47 @@ namespace DtronixCommon.Collections.Lists;
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class FloatList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly FloatList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(FloatList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new FloatList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -26,7 +69,7 @@ public class FloatList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -36,7 +79,7 @@ public class FloatList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -70,8 +113,24 @@ public class FloatList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
+    }
+
+    /// <summary>
+    /// Returns the range of values for the specified element.
+    /// WARNING: Does not perform bounds checks.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="fieldStart">Starting position of the field.</param>
+    /// <param name="fieldCount">
+    /// Nubmer of fields to return.  Make sure to not let this run outside
+    /// of the max and min ranges for fields.</param>
+    /// <returns>Span of data for the range</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<float> Get(int index, int fieldStart, int fieldCount)
+    {
+        return new ReadOnlySpan<float>(_data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -93,7 +152,7 @@ public class FloatList
     /// <param name="value"></param>
     public void Set(int index, int field, float value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -102,7 +161,7 @@ public class FloatList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -112,7 +171,7 @@ public class FloatList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -122,12 +181,38 @@ public class FloatList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            float[] newArray = new float[newCap];
+            var newArray = new float[newCap];
             Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBack(ReadOnlySpan<float> values)
+    {
+        int newPos = (InternalCount + 1) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > _data.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new float[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
+        }
+
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+
+        return InternalCount++;
     }
 
     /// <summary>
@@ -136,19 +221,19 @@ public class FloatList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -176,6 +261,30 @@ public class FloatList
     }
 
     /// <summary>
+    /// Inserts an element to a vacant position in the list and returns an index to it.
+    /// </summary>
+    /// <returns></returns>
+    public int Insert(ReadOnlySpan<float> values)
+    {
+        // If there's a free index in the free list, pop that and use it.
+        if (_freeElement != -1)
+        {
+            int index = _freeElement;
+            int pos = index * _numFields;
+
+            // Set the free index to the next free index.
+            _freeElement = (int)_data[pos];
+
+            // Return the free index.
+            values.CopyTo(_data.AsSpan(index * _numFields));
+            return index;
+        }
+
+        // Otherwise insert to the back of the array.
+        return PushBack(values);
+    }
+
+    /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
     /// <param name="index"></param>
@@ -187,12 +296,54 @@ public class FloatList
         _freeElement = index;
     }
 }
+
 /// <summary>
 /// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class DoubleList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly DoubleList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(DoubleList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new DoubleList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -206,7 +357,7 @@ public class DoubleList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -216,7 +367,7 @@ public class DoubleList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -250,8 +401,24 @@ public class DoubleList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
+    }
+
+    /// <summary>
+    /// Returns the range of values for the specified element.
+    /// WARNING: Does not perform bounds checks.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="fieldStart">Starting position of the field.</param>
+    /// <param name="fieldCount">
+    /// Nubmer of fields to return.  Make sure to not let this run outside
+    /// of the max and min ranges for fields.</param>
+    /// <returns>Span of data for the range</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<double> Get(int index, int fieldStart, int fieldCount)
+    {
+        return new ReadOnlySpan<double>(_data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -273,7 +440,7 @@ public class DoubleList
     /// <param name="value"></param>
     public void Set(int index, int field, double value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -282,7 +449,7 @@ public class DoubleList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -292,7 +459,7 @@ public class DoubleList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -302,12 +469,38 @@ public class DoubleList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            double[] newArray = new double[newCap];
+            var newArray = new double[newCap];
             Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBack(ReadOnlySpan<double> values)
+    {
+        int newPos = (InternalCount + 1) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > _data.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new double[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
+        }
+
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+
+        return InternalCount++;
     }
 
     /// <summary>
@@ -316,19 +509,19 @@ public class DoubleList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -356,6 +549,30 @@ public class DoubleList
     }
 
     /// <summary>
+    /// Inserts an element to a vacant position in the list and returns an index to it.
+    /// </summary>
+    /// <returns></returns>
+    public int Insert(ReadOnlySpan<double> values)
+    {
+        // If there's a free index in the free list, pop that and use it.
+        if (_freeElement != -1)
+        {
+            int index = _freeElement;
+            int pos = index * _numFields;
+
+            // Set the free index to the next free index.
+            _freeElement = (int)_data[pos];
+
+            // Return the free index.
+            values.CopyTo(_data.AsSpan(index * _numFields));
+            return index;
+        }
+
+        // Otherwise insert to the back of the array.
+        return PushBack(values);
+    }
+
+    /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
     /// <param name="index"></param>
@@ -367,12 +584,54 @@ public class DoubleList
         _freeElement = index;
     }
 }
+
 /// <summary>
 /// List of int with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class IntList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly IntList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(IntList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new IntList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -386,7 +645,7 @@ public class IntList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -396,7 +655,7 @@ public class IntList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -430,8 +689,24 @@ public class IntList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
+    }
+
+    /// <summary>
+    /// Returns the range of values for the specified element.
+    /// WARNING: Does not perform bounds checks.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="fieldStart">Starting position of the field.</param>
+    /// <param name="fieldCount">
+    /// Nubmer of fields to return.  Make sure to not let this run outside
+    /// of the max and min ranges for fields.</param>
+    /// <returns>Span of data for the range</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<int> Get(int index, int fieldStart, int fieldCount)
+    {
+        return new ReadOnlySpan<int>(_data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -453,7 +728,7 @@ public class IntList
     /// <param name="value"></param>
     public void Set(int index, int field, int value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -462,7 +737,7 @@ public class IntList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -472,7 +747,7 @@ public class IntList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -482,12 +757,38 @@ public class IntList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            int[] newArray = new int[newCap];
+            var newArray = new int[newCap];
             Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBack(ReadOnlySpan<int> values)
+    {
+        int newPos = (InternalCount + 1) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > _data.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new int[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
+        }
+
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+
+        return InternalCount++;
     }
 
     /// <summary>
@@ -496,19 +797,19 @@ public class IntList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -536,6 +837,30 @@ public class IntList
     }
 
     /// <summary>
+    /// Inserts an element to a vacant position in the list and returns an index to it.
+    /// </summary>
+    /// <returns></returns>
+    public int Insert(ReadOnlySpan<int> values)
+    {
+        // If there's a free index in the free list, pop that and use it.
+        if (_freeElement != -1)
+        {
+            int index = _freeElement;
+            int pos = index * _numFields;
+
+            // Set the free index to the next free index.
+            _freeElement = (int)_data[pos];
+
+            // Return the free index.
+            values.CopyTo(_data.AsSpan(index * _numFields));
+            return index;
+        }
+
+        // Otherwise insert to the back of the array.
+        return PushBack(values);
+    }
+
+    /// <summary>
     /// Removes the nth element in the list.
     /// </summary>
     /// <param name="index"></param>
@@ -547,12 +872,54 @@ public class IntList
         _freeElement = index;
     }
 }
+
 /// <summary>
 /// List of long with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class LongList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly LongList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(LongList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new LongList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -566,7 +933,7 @@ public class LongList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -576,7 +943,7 @@ public class LongList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -610,8 +977,24 @@ public class LongList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
+    }
+
+    /// <summary>
+    /// Returns the range of values for the specified element.
+    /// WARNING: Does not perform bounds checks.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="fieldStart">Starting position of the field.</param>
+    /// <param name="fieldCount">
+    /// Nubmer of fields to return.  Make sure to not let this run outside
+    /// of the max and min ranges for fields.</param>
+    /// <returns>Span of data for the range</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ReadOnlySpan<long> Get(int index, int fieldStart, int fieldCount)
+    {
+        return new ReadOnlySpan<long>(_data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -633,7 +1016,7 @@ public class LongList
     /// <param name="value"></param>
     public void Set(int index, int field, long value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -642,7 +1025,7 @@ public class LongList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -652,7 +1035,7 @@ public class LongList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -662,12 +1045,38 @@ public class LongList
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            long[] newArray = new long[newCap];
+            var newArray = new long[newCap];
             Array.Copy(_data, newArray, _data.Length);
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBack(ReadOnlySpan<long> values)
+    {
+        int newPos = (InternalCount + 1) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > _data.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new long[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
+        }
+
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+
+        return InternalCount++;
     }
 
     /// <summary>
@@ -676,19 +1085,19 @@ public class LongList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -713,6 +1122,30 @@ public class LongList
 
         // Otherwise insert to the back of the array.
         return PushBack();
+    }
+
+    /// <summary>
+    /// Inserts an element to a vacant position in the list and returns an index to it.
+    /// </summary>
+    /// <returns></returns>
+    public int Insert(ReadOnlySpan<long> values)
+    {
+        // If there's a free index in the free list, pop that and use it.
+        if (_freeElement != -1)
+        {
+            int index = _freeElement;
+            int pos = index * _numFields;
+
+            // Set the free index to the next free index.
+            _freeElement = (int)_data[pos];
+
+            // Return the free index.
+            values.CopyTo(_data.AsSpan(index * _numFields));
+            return index;
+        }
+
+        // Otherwise insert to the back of the array.
+        return PushBack(values);
     }
 
     /// <summary>

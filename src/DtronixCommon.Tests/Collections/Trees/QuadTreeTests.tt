@@ -86,7 +86,7 @@ public class <#=config.ClassName#>Tests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
