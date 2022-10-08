@@ -9,54 +9,53 @@ using System.Collections.Concurrent;
 namespace DtronixCommon.Collections.Lists;
 
 
-public class CachingFloatList
-{
-    public readonly struct Item
-    {
-        public readonly long ExpireTime;
-        public readonly FloatList List;
-        private readonly ConcurrentQueue<Item> _returnQueue;
-
-        public Item(FloatList list, ConcurrentQueue<Item> queue, int expiresInSeconds)
-        {
-            ExpireTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresInSeconds;
-            List = list;
-            _returnQueue = queue;
-        }
-
-        public void Return()
-        {
-            List.Clear();
-            _returnQueue.Enqueue(this);
-        }
-    }
-
-    private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
-    public Item Get(int fieldCount, int expiresInSeconds)
-    {
-        if (_cachedLists.TryDequeue(out var list))
-        {
-            // See if the list is over a minute old.  If so, dispose it.
-            if (list.ExpireTime < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            {
-                list = new Item(new FloatList(fieldCount), _cachedLists, expiresInSeconds);
-            }
-        }
-        else
-        {
-            list = new Item(new FloatList(fieldCount), _cachedLists, expiresInSeconds);
-        }
-
-        return list;
-    }
-}
-
 /// <summary>
 /// List of float with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class FloatList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly FloatList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(FloatList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new FloatList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -70,7 +69,7 @@ public class FloatList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -80,7 +79,7 @@ public class FloatList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -114,7 +113,7 @@ public class FloatList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public float Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
     }
 
@@ -153,7 +152,7 @@ public class FloatList
     /// <param name="value"></param>
     public void Set(int index, int field, float value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -162,7 +161,7 @@ public class FloatList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -172,7 +171,7 @@ public class FloatList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -187,7 +186,7 @@ public class FloatList
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -196,7 +195,7 @@ public class FloatList
     /// <returns></returns>
     public int PushBack(ReadOnlySpan<float> values)
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -211,9 +210,9 @@ public class FloatList
             _data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(_count * _numFields));
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -222,19 +221,19 @@ public class FloatList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -298,54 +297,53 @@ public class FloatList
     }
 }
 
-public class CachingDoubleList
-{
-    public readonly struct Item
-    {
-        public readonly long ExpireTime;
-        public readonly DoubleList List;
-        private readonly ConcurrentQueue<Item> _returnQueue;
-
-        public Item(DoubleList list, ConcurrentQueue<Item> queue, int expiresInSeconds)
-        {
-            ExpireTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresInSeconds;
-            List = list;
-            _returnQueue = queue;
-        }
-
-        public void Return()
-        {
-            List.Clear();
-            _returnQueue.Enqueue(this);
-        }
-    }
-
-    private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
-    public Item Get(int fieldCount, int expiresInSeconds)
-    {
-        if (_cachedLists.TryDequeue(out var list))
-        {
-            // See if the list is over a minute old.  If so, dispose it.
-            if (list.ExpireTime < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            {
-                list = new Item(new DoubleList(fieldCount), _cachedLists, expiresInSeconds);
-            }
-        }
-        else
-        {
-            list = new Item(new DoubleList(fieldCount), _cachedLists, expiresInSeconds);
-        }
-
-        return list;
-    }
-}
-
 /// <summary>
 /// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class DoubleList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly DoubleList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(DoubleList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new DoubleList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -359,7 +357,7 @@ public class DoubleList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -369,7 +367,7 @@ public class DoubleList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -403,7 +401,7 @@ public class DoubleList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public double Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
     }
 
@@ -442,7 +440,7 @@ public class DoubleList
     /// <param name="value"></param>
     public void Set(int index, int field, double value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -451,7 +449,7 @@ public class DoubleList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -461,7 +459,7 @@ public class DoubleList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -476,7 +474,7 @@ public class DoubleList
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -485,7 +483,7 @@ public class DoubleList
     /// <returns></returns>
     public int PushBack(ReadOnlySpan<double> values)
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -500,9 +498,9 @@ public class DoubleList
             _data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(_count * _numFields));
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -511,19 +509,19 @@ public class DoubleList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -587,54 +585,53 @@ public class DoubleList
     }
 }
 
-public class CachingIntList
-{
-    public readonly struct Item
-    {
-        public readonly long ExpireTime;
-        public readonly IntList List;
-        private readonly ConcurrentQueue<Item> _returnQueue;
-
-        public Item(IntList list, ConcurrentQueue<Item> queue, int expiresInSeconds)
-        {
-            ExpireTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresInSeconds;
-            List = list;
-            _returnQueue = queue;
-        }
-
-        public void Return()
-        {
-            List.Clear();
-            _returnQueue.Enqueue(this);
-        }
-    }
-
-    private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
-    public Item Get(int fieldCount, int expiresInSeconds)
-    {
-        if (_cachedLists.TryDequeue(out var list))
-        {
-            // See if the list is over a minute old.  If so, dispose it.
-            if (list.ExpireTime < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            {
-                list = new Item(new IntList(fieldCount), _cachedLists, expiresInSeconds);
-            }
-        }
-        else
-        {
-            list = new Item(new IntList(fieldCount), _cachedLists, expiresInSeconds);
-        }
-
-        return list;
-    }
-}
-
 /// <summary>
 /// List of int with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class IntList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly IntList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(IntList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new IntList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -648,7 +645,7 @@ public class IntList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -658,7 +655,7 @@ public class IntList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -692,7 +689,7 @@ public class IntList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
     }
 
@@ -731,7 +728,7 @@ public class IntList
     /// <param name="value"></param>
     public void Set(int index, int field, int value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -740,7 +737,7 @@ public class IntList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -750,7 +747,7 @@ public class IntList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -765,7 +762,7 @@ public class IntList
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -774,7 +771,7 @@ public class IntList
     /// <returns></returns>
     public int PushBack(ReadOnlySpan<int> values)
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -789,9 +786,9 @@ public class IntList
             _data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(_count * _numFields));
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -800,19 +797,19 @@ public class IntList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 
@@ -876,54 +873,53 @@ public class IntList
     }
 }
 
-public class CachingLongList
-{
-    public readonly struct Item
-    {
-        public readonly long ExpireTime;
-        public readonly LongList List;
-        private readonly ConcurrentQueue<Item> _returnQueue;
-
-        public Item(LongList list, ConcurrentQueue<Item> queue, int expiresInSeconds)
-        {
-            ExpireTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + expiresInSeconds;
-            List = list;
-            _returnQueue = queue;
-        }
-
-        public void Return()
-        {
-            List.Clear();
-            _returnQueue.Enqueue(this);
-        }
-    }
-
-    private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
-    public Item Get(int fieldCount, int expiresInSeconds)
-    {
-        if (_cachedLists.TryDequeue(out var list))
-        {
-            // See if the list is over a minute old.  If so, dispose it.
-            if (list.ExpireTime < DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            {
-                list = new Item(new LongList(fieldCount), _cachedLists, expiresInSeconds);
-            }
-        }
-        else
-        {
-            list = new Item(new LongList(fieldCount), _cachedLists, expiresInSeconds);
-        }
-
-        return list;
-    }
-}
-
 /// <summary>
 /// List of long with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
 public class LongList
 {
+    public class Cache
+    {
+        private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
+        private readonly int _fieldCount;
+
+        public class Item
+        {
+            public readonly long ExpireTime;
+            public readonly LongList List;
+            private readonly ConcurrentQueue<Item> _returnQueue;
+
+            public Item(LongList list, ConcurrentQueue<Item> queue)
+            {
+                List = list;
+                _returnQueue = queue;
+            }
+
+            public void Return()
+            {
+                List.InternalCount = 0;
+                List._freeElement = -1;
+                _returnQueue.Enqueue(this);
+            }
+        }
+
+        public Cache(int fieldCount)
+        {
+            _fieldCount = fieldCount;
+        }
+
+        public Item Get()
+        {
+            if (!_cachedLists.TryDequeue(out var list))
+            {
+                return new Item(new LongList(_fieldCount), _cachedLists);
+            }
+
+            return list;
+        }
+    }
+
     /// <summary>
     /// Contains the data.
     /// </summary>
@@ -937,7 +933,7 @@ public class LongList
     /// <summary>
     /// Current number of elements the list contains.
     /// </summary>
-    private int _count = 0;
+    internal int InternalCount = 0;
 
     /// <summary>
     /// Index of the last free element in the array.  -1 if there are no free elements.
@@ -947,7 +943,7 @@ public class LongList
     /// <summary>
     /// Number of elements the list contains.
     /// </summary>
-    public int Count => _count;
+    public int Count => InternalCount;
 
     /// <summary>
     /// Creates a new list of elements which each consist of integer fields.
@@ -981,7 +977,7 @@ public class LongList
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public long Get(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return _data[index * _numFields + field];
     }
 
@@ -1020,7 +1016,7 @@ public class LongList
     /// <param name="value"></param>
     public void Set(int index, int field, long value)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
     }
 
@@ -1029,7 +1025,7 @@ public class LongList
     /// </summary>
     public void Clear()
     {
-        _count = 0;
+        InternalCount = 0;
         _freeElement = -1;
     }
 
@@ -1039,7 +1035,7 @@ public class LongList
     /// <returns></returns>
     public int PushBack()
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -1054,7 +1050,7 @@ public class LongList
             _data = newArray;
         }
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -1063,7 +1059,7 @@ public class LongList
     /// <returns></returns>
     public int PushBack(ReadOnlySpan<long> values)
     {
-        int newPos = (_count + 1) * _numFields;
+        int newPos = (InternalCount + 1) * _numFields;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
@@ -1078,9 +1074,9 @@ public class LongList
             _data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(_count * _numFields));
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        return _count++;
+        return InternalCount++;
     }
 
     /// <summary>
@@ -1089,19 +1085,19 @@ public class LongList
     public void PopBack()
     {
         // Just decrement the list size.
-        Debug.Assert(_count > 0);
-        --_count;
+        Debug.Assert(InternalCount > 0);
+        --InternalCount;
     }
 
     public void Increment(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
-        Debug.Assert(index >= 0 && index < _count && field >= 0 && field < _numFields);
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field]--;
     }
 

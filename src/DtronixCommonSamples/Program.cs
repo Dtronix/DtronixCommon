@@ -1,5 +1,6 @@
 ﻿using DtronixCommon.Collections;
 using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -11,30 +12,33 @@ namespace DtronixCommonSamples
     {
         private class MyClass : IQuadTreeItem
         {
-            int IQuadTreeItem.QuadTreeId { get; set; }
+            int IQuadTreeItem.QuadTreeId { get; set; } = -1;
         }
         static void Main(string[] args)
         {
-
-            var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8, 1024 * 1024 * 128);
+            var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8, 510 * 510);
             
             var offsetX = 2;
             var offsetY = 2;
-            for (int x = 0; x < 500; x++)
-            {
-                for (int y = 0; y < 500; y++)
-                {
-                    qtf.Insert(
-                        x - offsetX + offsetX * x,
-                        y - offsetY + offsetY * y,
-                        x + offsetX + offsetX * x,
-                        y + offsetY + offsetY * y, new MyClass());
-                }
-            }
+
+
 
             while (true)
             {
-                qtf.Walk(float.MinValue, float.MinValue, float.MaxValue, float.MaxValue, ele => true);
+                for (int x = 0; x < 500; x++)
+                {
+                    for (int y = 0; y < 500; y++)
+                    {
+                        qtf.Insert(
+                            x - offsetX + offsetX * x,
+                            y - offsetY + offsetY * y,
+                            x + offsetX + offsetX * x,
+                            y + offsetY + offsetY * y, new MyClass());
+                    }
+                }
+
+                qtf.Clear();
+                //qtf.Walk(float.MinValue, float.MinValue, float.MaxValue, float.MaxValue, ele => true);
             }
 
             return;
