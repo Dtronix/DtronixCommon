@@ -182,7 +182,16 @@ public class <#=config.ClassName#><T>
 
     static <#=config.ClassName#>()
     {
-        var property = typeof(T).GetProperty("QuadTreeId");
+        // Implemented interface.
+        var property = typeof(T).GetProperty("QuadTreeId", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+        if (property == null)
+        {
+            // Explicit interface implementation
+            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
 
         if (property == null)
             throw new Exception(

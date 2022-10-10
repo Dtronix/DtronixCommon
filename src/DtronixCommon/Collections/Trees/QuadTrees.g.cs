@@ -144,7 +144,16 @@ public class FloatQuadTree<T>
 
     static FloatQuadTree()
     {
-        var property = typeof(T).GetProperty("QuadTreeId");
+        // Implemented interface.
+        var property = typeof(T).GetProperty("QuadTreeId", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+        if (property == null)
+        {
+            // Explicit interface implementation
+            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
 
         if (property == null)
             throw new Exception(
@@ -758,7 +767,16 @@ public class LongQuadTree<T>
 
     static LongQuadTree()
     {
-        var property = typeof(T).GetProperty("QuadTreeId");
+        // Implemented interface.
+        var property = typeof(T).GetProperty("QuadTreeId", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+        if (property == null)
+        {
+            // Explicit interface implementation
+            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
 
         if (property == null)
             throw new Exception(
@@ -1372,7 +1390,16 @@ public class IntQuadTree<T>
 
     static IntQuadTree()
     {
-        var property = typeof(T).GetProperty("QuadTreeId");
+        // Implemented interface.
+        var property = typeof(T).GetProperty("QuadTreeId", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+        if (property == null)
+        {
+            // Explicit interface implementation
+            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
 
         if (property == null)
             throw new Exception(
@@ -1986,7 +2013,16 @@ public class DoubleQuadTree<T>
 
     static DoubleQuadTree()
     {
-        var property = typeof(T).GetProperty("QuadTreeId");
+        // Implemented interface.
+        var property = typeof(T).GetProperty("QuadTreeId", 
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+        if (property == null)
+        {
+            // Explicit interface implementation
+            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
 
         if (property == null)
             throw new Exception(
