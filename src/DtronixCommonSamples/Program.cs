@@ -3,6 +3,7 @@ using System;
 using System.CodeDom;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using DtronixCommon.Collections.Trees;
 
@@ -14,8 +15,33 @@ namespace DtronixCommonSamples
         {
             int IQuadTreeItem.QuadTreeId { get; set; } = -1;
         }
-        static void Main(string[] args)
+        static unsafe void Main(string[] args)
         {
+            nuint dataLength = 8;
+
+            var mem = NativeMemory.Alloc(dataLength * sizeof(float));
+            Span<float> data = new Span<float>(mem, (int)(dataLength * sizeof(float)));
+            
+            data[0] = 12;
+            data[1] = 122;
+
+            for (int i = 0; i < 24; i++)
+            {
+                dataLength *= 2;
+
+                mem = NativeMemory.Realloc(mem, (dataLength * sizeof(float)));
+                Span<float> dataTemp = new Span<float>(mem, (int)(dataLength * sizeof(float)));
+                dataTemp[2] = 42.3151f;
+
+                var s0 = dataTemp[0];
+                var s1 = dataTemp[1];
+                var s2 = dataTemp[2];
+                data = dataTemp;
+
+            }
+
+            Console.ReadLine();
+            return;
             var qtf = new FloatQuadTree<MyClass>(float.MaxValue, float.MaxValue, 8, 8, 510 * 510);
             
             var offsetX = 2;

@@ -136,6 +136,8 @@ public class <#=config.ClassName#><T>
 
     private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
+    private static readonly Func<T, Boundary> _boundaryGetter;
+
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
     /// </summary>
@@ -182,25 +184,48 @@ public class <#=config.ClassName#><T>
 
     static <#=config.ClassName#>()
     {
+    static FloatQuadTree()
+    {
         // Implemented interface.
-        var property = typeof(T).GetProperty("QuadTreeId", 
+        var quadTreeIdProp = typeof(T).GetProperty("QuadTreeId", 
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
 
-        if (property == null)
+        if (quadTreeIdProp == null)
         {
             // Explicit interface implementation
-            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+            quadTreeIdProp = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         }
 
-        if (property == null)
+        if (quadTreeIdProp == null)
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
+        var quadTreeIdPropField = quadTreeIdProp.GetBackingField();
 
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdGetter = quadTreeIdPropField.CreateGetter<T, int>();
+        _quadTreeIdSetter = quadTreeIdPropField.CreateSetter<T, int>();
+
+        // Implemented interface.
+        var boundsProp = typeof(T).GetProperty("QuadTreeId",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+
+        if (boundsProp == null)
+        {
+            // Explicit interface implementation
+            boundsProp = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
+
+        if (boundsProp == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+        
+        var boundsPropField = boundsProp.GetBackingField();
+
+        _boundaryGetter = boundsPropField.CreateGetter<T, Boundary>();
+    }
     }
 
     /// <summary>

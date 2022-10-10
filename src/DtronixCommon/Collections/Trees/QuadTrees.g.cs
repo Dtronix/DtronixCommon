@@ -1,4 +1,4 @@
-// ----------------------------
+﻿// ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
 // ----------------------------
@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Reflection;
 using System.Reflection;
+using DtronixCommon.Structures;
 
 namespace DtronixCommon.Collections.Trees;
 
@@ -98,6 +99,8 @@ public class FloatQuadTree<T>
 
     private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
+    private static readonly Func<T, Boundary> _boundaryGetter;
+
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
     /// </summary>
@@ -145,24 +148,44 @@ public class FloatQuadTree<T>
     static FloatQuadTree()
     {
         // Implemented interface.
-        var property = typeof(T).GetProperty("QuadTreeId", 
+        var quadTreeIdProp = typeof(T).GetProperty("QuadTreeId", 
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
 
-        if (property == null)
+        if (quadTreeIdProp == null)
         {
             // Explicit interface implementation
-            property = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+            quadTreeIdProp = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
                 BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
         }
 
-        if (property == null)
+        if (quadTreeIdProp == null)
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
+        var quadTreeIdPropField = quadTreeIdProp.GetBackingField();
 
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdGetter = quadTreeIdPropField.CreateGetter<T, int>();
+        _quadTreeIdSetter = quadTreeIdPropField.CreateSetter<T, int>();
+
+        // Implemented interface.
+        var boundsProp = typeof(T).GetProperty("QuadTreeId",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
+
+
+        if (boundsProp == null)
+        {
+            // Explicit interface implementation
+            boundsProp = typeof(T).GetProperty("DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId",
+                BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        }
+
+        if (boundsProp == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+        
+        var boundsPropField = boundsProp.GetBackingField();
+
+        _boundaryGetter = boundsPropField.CreateGetter<T, Boundary>();
     }
 
     /// <summary>
@@ -174,12 +197,19 @@ public class FloatQuadTree<T>
     /// <param name="y2">Max Y</param>
     /// <param name="item">Item to insert into the quad tree.</param>
     /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(float x1, float y1, float x2, float y2, T item)
+    public int Insert(T item)
     {
         if (_quadTreeIdGetter(item) != -1)
             return -1;
 
-        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
+        var boundsField = _boundaryGetter(item);
+        ReadOnlySpan<float> bounds = stackalloc[]
+        {
+            boundsField.MinX,
+            boundsField.MinY,
+            boundsField.MaxX,
+            boundsField.MaxY,
+        };
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
@@ -310,17 +340,19 @@ public class FloatQuadTree<T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <returns>List of items which intersect the bounds.</returns>
-    public List<T> Query(
-        float x1,
-        float y1,
-        float x2, 
-        float y2)
+    public List<T> Query(in Boundary bounds)
     {
         var listOut = new List<T>();
-        ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<float> spanBounds = stackalloc[]
+        {
+            bounds.MinX,
+            bounds.MinY,
+            bounds.MaxX,
+            bounds.MaxY,
+        };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<float>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<float>(_rootNode), spanBounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -339,7 +371,7 @@ public class FloatQuadTree<T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp[element] && Intersect(spanBounds, _eleBounds.Get(element, 0, 4)))
                 {
                     listOut.Add(items[element]!);
                     _temp[element] = true;
