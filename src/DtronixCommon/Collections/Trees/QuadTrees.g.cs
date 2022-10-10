@@ -96,7 +96,6 @@ public class FloatQuadTree<T>
 
     private readonly FloatList.Cache _listCache = new FloatList.Cache(_ndNum);
 
-    private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
@@ -114,7 +113,7 @@ public class FloatQuadTree<T>
     /// the leaf is at the maximum allowed tree depth.
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
-    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
+    /// <param name="initialCapacity">Initial element capacity for the tree.</param>
     public FloatQuadTree(float width, float height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -159,24 +158,21 @@ public class FloatQuadTree<T>
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
-
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
 
     /// <summary>
-    /// Inserts an item into the quad tree at with the specified bounds.
+    /// Inserts an element into the quad tree at with the specified bounds.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
-    /// <param name="item">Item to insert into the quad tree.</param>
-    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(float x1, float y1, float x2, float y2, T item)
+    /// <param name="element">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
+    public int Insert(float x1, float y1, float x2, float y2, T element)
     {
-        if (_quadTreeIdGetter(item) != -1)
+        if (element.QuadTreeId != -1)
             return -1;
 
         ReadOnlySpan<float> bounds = stackalloc[] { x1, y1, x2, y2 };
@@ -186,11 +182,11 @@ public class FloatQuadTree<T>
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
-        items[newElement] = item;
+        items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(new ReadOnlySpan<float>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(item, newElement);
+         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -198,9 +194,9 @@ public class FloatQuadTree<T>
     /// Removes the specified element from the tree.
     /// </summary>
     /// <param name="element">Element to remove.</param>
-        public void Remove(T element)
+    public void Remove(T element)
     {
-        var id = _quadTreeIdGetter(element);
+        var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
             new ReadOnlySpan<float>(_rootNode),
@@ -352,7 +348,7 @@ public class FloatQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[_quadTreeIdGetter(listOut[j])] = false;
+            _temp[listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -365,7 +361,7 @@ public class FloatQuadTree<T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
@@ -425,14 +421,14 @@ public class FloatQuadTree<T>
     }
 
          /// <summary>
-    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
@@ -719,7 +715,6 @@ public class LongQuadTree<T>
 
     private readonly LongList.Cache _listCache = new LongList.Cache(_ndNum);
 
-    private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
@@ -737,7 +732,7 @@ public class LongQuadTree<T>
     /// the leaf is at the maximum allowed tree depth.
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
-    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
+    /// <param name="initialCapacity">Initial element capacity for the tree.</param>
     public LongQuadTree(long width, long height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -782,24 +777,21 @@ public class LongQuadTree<T>
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
-
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
 
     /// <summary>
-    /// Inserts an item into the quad tree at with the specified bounds.
+    /// Inserts an element into the quad tree at with the specified bounds.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
-    /// <param name="item">Item to insert into the quad tree.</param>
-    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(long x1, long y1, long x2, long y2, T item)
+    /// <param name="element">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
+    public int Insert(long x1, long y1, long x2, long y2, T element)
     {
-        if (_quadTreeIdGetter(item) != -1)
+        if (element.QuadTreeId != -1)
             return -1;
 
         ReadOnlySpan<long> bounds = stackalloc[] { x1, y1, x2, y2 };
@@ -809,11 +801,11 @@ public class LongQuadTree<T>
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
-        items[newElement] = item;
+        items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(new ReadOnlySpan<long>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(item, newElement);
+         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -821,9 +813,9 @@ public class LongQuadTree<T>
     /// Removes the specified element from the tree.
     /// </summary>
     /// <param name="element">Element to remove.</param>
-        public void Remove(T element)
+    public void Remove(T element)
     {
-        var id = _quadTreeIdGetter(element);
+        var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
             new ReadOnlySpan<long>(_rootNode),
@@ -975,7 +967,7 @@ public class LongQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[_quadTreeIdGetter(listOut[j])] = false;
+            _temp[listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -988,7 +980,7 @@ public class LongQuadTree<T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
@@ -1048,14 +1040,14 @@ public class LongQuadTree<T>
     }
 
          /// <summary>
-    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
@@ -1342,7 +1334,6 @@ public class IntQuadTree<T>
 
     private readonly IntList.Cache _listCache = new IntList.Cache(_ndNum);
 
-    private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
@@ -1360,7 +1351,7 @@ public class IntQuadTree<T>
     /// the leaf is at the maximum allowed tree depth.
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
-    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
+    /// <param name="initialCapacity">Initial element capacity for the tree.</param>
     public IntQuadTree(int width, int height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -1405,24 +1396,21 @@ public class IntQuadTree<T>
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
-
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
 
     /// <summary>
-    /// Inserts an item into the quad tree at with the specified bounds.
+    /// Inserts an element into the quad tree at with the specified bounds.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
-    /// <param name="item">Item to insert into the quad tree.</param>
-    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(int x1, int y1, int x2, int y2, T item)
+    /// <param name="element">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
+    public int Insert(int x1, int y1, int x2, int y2, T element)
     {
-        if (_quadTreeIdGetter(item) != -1)
+        if (element.QuadTreeId != -1)
             return -1;
 
         ReadOnlySpan<int> bounds = stackalloc[] { x1, y1, x2, y2 };
@@ -1432,11 +1420,11 @@ public class IntQuadTree<T>
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
-        items[newElement] = item;
+        items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(new ReadOnlySpan<int>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(item, newElement);
+         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -1444,9 +1432,9 @@ public class IntQuadTree<T>
     /// Removes the specified element from the tree.
     /// </summary>
     /// <param name="element">Element to remove.</param>
-        public void Remove(T element)
+    public void Remove(T element)
     {
-        var id = _quadTreeIdGetter(element);
+        var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
             new ReadOnlySpan<int>(_rootNode),
@@ -1598,7 +1586,7 @@ public class IntQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[_quadTreeIdGetter(listOut[j])] = false;
+            _temp[listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -1611,7 +1599,7 @@ public class IntQuadTree<T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
@@ -1671,14 +1659,14 @@ public class IntQuadTree<T>
     }
 
          /// <summary>
-    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
@@ -1965,7 +1953,6 @@ public class DoubleQuadTree<T>
 
     private readonly DoubleList.Cache _listCache = new DoubleList.Cache(_ndNum);
 
-    private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
@@ -1983,7 +1970,7 @@ public class DoubleQuadTree<T>
     /// the leaf is at the maximum allowed tree depth.
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
-    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
+    /// <param name="initialCapacity">Initial element capacity for the tree.</param>
     public DoubleQuadTree(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -2028,24 +2015,21 @@ public class DoubleQuadTree<T>
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
-
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
 
     /// <summary>
-    /// Inserts an item into the quad tree at with the specified bounds.
+    /// Inserts an element into the quad tree at with the specified bounds.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
-    /// <param name="item">Item to insert into the quad tree.</param>
-    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(double x1, double y1, double x2, double y2, T item)
+    /// <param name="element">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
+    public int Insert(double x1, double y1, double x2, double y2, T element)
     {
-        if (_quadTreeIdGetter(item) != -1)
+        if (element.QuadTreeId != -1)
             return -1;
 
         ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
@@ -2055,11 +2039,11 @@ public class DoubleQuadTree<T>
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
-        items[newElement] = item;
+        items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(new ReadOnlySpan<double>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(item, newElement);
+         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -2067,9 +2051,9 @@ public class DoubleQuadTree<T>
     /// Removes the specified element from the tree.
     /// </summary>
     /// <param name="element">Element to remove.</param>
-        public void Remove(T element)
+    public void Remove(T element)
     {
-        var id = _quadTreeIdGetter(element);
+        var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
             new ReadOnlySpan<double>(_rootNode),
@@ -2221,7 +2205,7 @@ public class DoubleQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[_quadTreeIdGetter(listOut[j])] = false;
+            _temp[listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -2234,7 +2218,7 @@ public class DoubleQuadTree<T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
@@ -2294,14 +2278,14 @@ public class DoubleQuadTree<T>
     }
 
          /// <summary>
-    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(

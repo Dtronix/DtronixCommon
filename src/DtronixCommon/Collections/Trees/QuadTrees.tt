@@ -134,7 +134,6 @@ public class <#=config.ClassName#><T>
 
     private readonly <#=config.MainListClass#>.Cache _listCache = new <#=config.MainListClass#>.Cache(_ndNum);
 
-    private static readonly Func<T, int> _quadTreeIdGetter;
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
     /// Items contained in the quad tree.  The index of the items matches their QuadTreeId.
@@ -152,7 +151,7 @@ public class <#=config.ClassName#><T>
     /// the leaf is at the maximum allowed tree depth.
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
-    /// <param name="initialCapacity">Initial item capacity for the tree.</param>
+    /// <param name="initialCapacity">Initial element capacity for the tree.</param>
     public <#=config.ClassName#>(<#=config.MainNumberType#> width, <#=config.MainNumberType#> height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
@@ -197,24 +196,21 @@ public class <#=config.ClassName#><T>
             throw new Exception(
                 $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
-        var backingField = property.GetBackingField();
-
-        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
-        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
+        _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
 
     /// <summary>
-    /// Inserts an item into the quad tree at with the specified bounds.
+    /// Inserts an element into the quad tree at with the specified bounds.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
-    /// <param name="item">Item to insert into the quad tree.</param>
-    /// <returns>Index of the new item. -1 if the item exists in the quad tree.</returns>
-    public int Insert(<#=config.MainNumberType#> x1, <#=config.MainNumberType#> y1, <#=config.MainNumberType#> x2, <#=config.MainNumberType#> y2, T item)
+    /// <param name="element">Item to insert into the quad tree.</param>
+    /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
+    public int Insert(<#=config.MainNumberType#> x1, <#=config.MainNumberType#> y1, <#=config.MainNumberType#> x2, <#=config.MainNumberType#> y2, T element)
     {
-        if (_quadTreeIdGetter(item) != -1)
+        if (element.QuadTreeId != -1)
             return -1;
 
         ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
@@ -224,11 +220,11 @@ public class <#=config.ClassName#><T>
         if (newElement == items.Length)
             Array.Resize(ref items, items.Length * 2);
 
-        items[newElement] = item;
+        items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
         node_insert(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(item, newElement);
+         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -236,9 +232,9 @@ public class <#=config.ClassName#><T>
     /// Removes the specified element from the tree.
     /// </summary>
     /// <param name="element">Element to remove.</param>
-        public void Remove(T element)
+    public void Remove(T element)
     {
-        var id = _quadTreeIdGetter(element);
+        var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
             new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode),
@@ -390,7 +386,7 @@ public class <#=config.ClassName#><T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[_quadTreeIdGetter(listOut[j])] = false;
+            _temp[listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -403,7 +399,7 @@ public class <#=config.ClassName#><T>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
@@ -463,14 +459,14 @@ public class <#=config.ClassName#><T>
     }
 
          /// <summary>
-    /// Walks the specified bounds of the QuadTree and invokes the callback on each found item.
+    /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
     /// <param name="y1">Min Y</param>
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <param name="callback">
-    /// Callback which is invoked on each found item.
+    /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
