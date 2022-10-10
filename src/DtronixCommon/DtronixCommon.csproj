@@ -37,12 +37,12 @@
 	<Target Name="TextTemplateClean" AfterTargets="Clean">
 		<Delete Files="@(Generated)" />
 	</Target>
-	<ItemGroup>
+  <ItemGroup>
 		<None Include="icon.png">
 			<Pack>True</Pack>
 			<PackagePath></PackagePath>
 		</None>
-	</ItemGroup>
+  </ItemGroup>
 	<ItemGroup>
 		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
 			<_Parameter1>DtronixCommon.Tests</_Parameter1>

@@ -4,6 +4,7 @@
 // ----------------------------
 using System.Runtime.CompilerServices;
 using DtronixCommon.Collections.Lists;
+using DtronixCommon.Reflection;
 using System.Reflection;
 
 namespace DtronixCommon.Collections.Trees;
@@ -143,15 +144,16 @@ public class FloatQuadTree<T>
 
     static FloatQuadTree()
     {
-        
-        var field = typeof(T).GetField("<DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-        if(field == null){
-            field = typeof(T)
-               .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-               .First();
-         }
-        _quadTreeIdGetter = FieldAccessors.CreateGetter<T, int>(field);
-        _quadTreeIdSetter = FieldAccessors.CreateSetter<T, int>(field);
+        var property = typeof(T).GetProperty("QuadTreeId");
+
+        if (property == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+
+        var backingField = property.GetBackingField();
+
+        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
+        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
     }
 
     /// <summary>
@@ -756,15 +758,16 @@ public class LongQuadTree<T>
 
     static LongQuadTree()
     {
-        
-        var field = typeof(T).GetField("<DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-        if(field == null){
-            field = typeof(T)
-               .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-               .First();
-         }
-        _quadTreeIdGetter = FieldAccessors.CreateGetter<T, int>(field);
-        _quadTreeIdSetter = FieldAccessors.CreateSetter<T, int>(field);
+        var property = typeof(T).GetProperty("QuadTreeId");
+
+        if (property == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+
+        var backingField = property.GetBackingField();
+
+        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
+        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
     }
 
     /// <summary>
@@ -1369,15 +1372,16 @@ public class IntQuadTree<T>
 
     static IntQuadTree()
     {
-        
-        var field = typeof(T).GetField("<DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-        if(field == null){
-            field = typeof(T)
-               .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-               .First();
-         }
-        _quadTreeIdGetter = FieldAccessors.CreateGetter<T, int>(field);
-        _quadTreeIdSetter = FieldAccessors.CreateSetter<T, int>(field);
+        var property = typeof(T).GetProperty("QuadTreeId");
+
+        if (property == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+
+        var backingField = property.GetBackingField();
+
+        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
+        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
     }
 
     /// <summary>
@@ -1982,15 +1986,16 @@ public class DoubleQuadTree<T>
 
     static DoubleQuadTree()
     {
-        
-        var field = typeof(T).GetField("<DtronixCommon.Collections.Trees.IQuadTreeItem.QuadTreeId>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-        if(field == null){
-            field = typeof(T)
-               .GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
-               .First();
-         }
-        _quadTreeIdGetter = FieldAccessors.CreateGetter<T, int>(field);
-        _quadTreeIdSetter = FieldAccessors.CreateSetter<T, int>(field);
+        var property = typeof(T).GetProperty("QuadTreeId");
+
+        if (property == null)
+            throw new Exception(
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+
+        var backingField = property.GetBackingField();
+
+        _quadTreeIdGetter = backingField.CreateGetter<T, int>();
+        _quadTreeIdSetter = backingField.CreateSetter<T, int>();
     }
 
     /// <summary>
