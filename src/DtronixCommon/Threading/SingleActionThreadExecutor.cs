@@ -16,6 +16,7 @@ public class SingleActionThreadExecutor : IDisposable
     internal Thread? Thread;
 
     private readonly Action _action;
+    private readonly string _name;
 
     /// <summary>
     /// True if the thread dispatcher has started.
@@ -43,8 +44,17 @@ public class SingleActionThreadExecutor : IDisposable
     /// Creates a new single action dispatcher.
     /// </summary>
     public SingleActionThreadExecutor(Action action)
+        :this(action, "SingleActionThreadExecutor")
+    {
+    }
+
+    /// <summary>
+    /// Creates a named single action dispatcher.
+    /// </summary>
+    public SingleActionThreadExecutor(Action action, string name)
     {
         _action = action;
+        _name = name;
         _resetEvent = new ManualResetEventSlim(false);
     }
 
@@ -114,7 +124,8 @@ public class SingleActionThreadExecutor : IDisposable
 
         Thread = new Thread(Pump)
         {
-            IsBackground = true
+            IsBackground = true,
+            Name = _name
         };
 
         Thread.Start();
