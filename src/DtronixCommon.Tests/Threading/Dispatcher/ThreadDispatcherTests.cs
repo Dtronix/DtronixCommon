@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
 using DtronixCommon.Tests.Utilities;
@@ -154,4 +155,27 @@ public class ThreadDispatcherTests
         await tcs.Task.TestTimeout();
 
     }
+
+    [Test]
+    public async Task WrapperIsExecuted()
+    {
+        int wrapperCallCount = 0;
+        void Wrapper(Action obj)
+        {
+            wrapperCallCount++;
+            obj();
+        }
+
+        var dispatcher = new ThreadDispatcher(1) { DispatcherExecutionWrapper = Wrapper };
+        dispatcher.Start();
+
+        await Task.Delay(500);
+
+        // Dummy action.
+        await dispatcher.Queue(() => { });
+
+        Assert.AreEqual(1, wrapperCallCount);
+    }
+
+
 }

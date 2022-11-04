@@ -28,6 +28,19 @@ public class ThreadDispatcher : IDisposable
     private CancellationTokenSource? _cancellationTokenSource;
 
     private readonly ThreadDispatcherConfiguration _configs;
+    private Action<Action>? _dispatcherExecutionWrapper;
+
+    /// <summary>
+    /// Optional wrapper which passes the message pump action's ExecuteCore for execution to.
+    /// </summary>
+    /// <remarks>
+    /// Note: Passed action must be called. Otherwise the queueing method will not be returned.
+    /// </remarks>
+    public Action<Action>? DispatcherExecutionWrapper
+    {
+        get => _dispatcherExecutionWrapper;
+        set => _dispatcherExecutionWrapper = value;
+    }
 
     /// <summary>
     /// True if the thread dispatcher has started.
@@ -114,7 +127,14 @@ public class ThreadDispatcher : IDisposable
                         continue;
                     }
 
-                    action.ExecuteCore();
+                    if (_dispatcherExecutionWrapper != null)
+                    {
+                        _dispatcherExecutionWrapper(action.ExecuteCore);
+                    }
+                    else
+                    {
+                        action.ExecuteCore();
+                    }
                 }
                 catch (TaskCanceledException)
                 {

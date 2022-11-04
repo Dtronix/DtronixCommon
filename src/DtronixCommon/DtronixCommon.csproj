@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>net5.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>0.6.4.0</Version>
+		<Version>0.6.5.0</Version>
 		<Nullable>enable</Nullable>
 		<LangVersion>10</LangVersion>
 		<Company>Dtronix</Company>
