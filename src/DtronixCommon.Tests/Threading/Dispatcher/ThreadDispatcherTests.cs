@@ -169,12 +169,25 @@ public class ThreadDispatcherTests
         var dispatcher = new ThreadDispatcher(1) { DispatcherExecutionWrapper = Wrapper };
         dispatcher.Start();
 
-        await Task.Delay(500);
-
         // Dummy action.
         await dispatcher.Queue(() => { });
 
         Assert.AreEqual(1, wrapperCallCount);
+    }
+
+    [Test]
+    public async Task DispatcherStopsWhenRunningLongRunningTasks()
+    {
+        var dispatcher = new ThreadDispatcher(1);
+        dispatcher.Start();
+
+        // Dummy action.
+        for (int i = 0; i < 10; i++)
+        {
+            dispatcher.QueueFireForget(_ => { Thread.Sleep(250); });
+        }
+
+        Assert.IsTrue(dispatcher.Stop(400));
     }
 
 

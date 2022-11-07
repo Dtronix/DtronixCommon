@@ -171,16 +171,11 @@ public class ThreadDispatcher : IDisposable
         for (int i = 0; i < _configs.ThreadCount; i++)
             _queues[0].TryAdd(new StopLoop());
 
-
         _cancellationTokenSource?.Cancel();
 
+        // Stop adding any items.
         foreach (var queue in _queues)
-        {
             queue.CompleteAdding();
-            queue.Dispose();
-        }
-
-        _queues = null;
 
         var stopSuccessful = true;
         // Join all the threads back to ensure they are complete.
@@ -190,7 +185,12 @@ public class ThreadDispatcher : IDisposable
             if (!thread.Join(timeout))
                 stopSuccessful = false;
         }
-            
+
+        // Dispose of all the queues since the threads have now been stopped.
+        foreach (var queue in _queues)
+            queue.Dispose();
+
+        _queues = null;
         Threads = null;
 
         return stopSuccessful;
