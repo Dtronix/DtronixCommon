@@ -38,4 +38,6 @@ public class ThreadDispatcherConfiguration
     /// Set to -1 to infinitely wait.
     /// </summary>
     public int QueueTryAddTimeout { get; set; } = 1500;
+
+    public string ThreadName { get; set; } = "ThreadDispatcher";
 }

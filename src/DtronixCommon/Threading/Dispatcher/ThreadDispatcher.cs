@@ -224,7 +224,8 @@ public class ThreadDispatcher : IDisposable
         {
             Threads[i] = new Thread(Pump)
             {
-                IsBackground = true
+                IsBackground = true,
+                Name = _configs.ThreadName + "_" + i.ToString()
             };
             Threads[i].Start();
         }
