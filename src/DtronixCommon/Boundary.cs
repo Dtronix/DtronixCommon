@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace DtronixCommon;
 
@@ -304,17 +305,18 @@ public readonly struct Boundary
     }
 
     /// <summary>
-    /// Checks to see if the the two boundaries are equal.
+    /// Checks to see if the the two boundaries are not equal.
     /// </summary>
     /// <param name="boundary1">First boundary.</param>
     /// <param name="boundary2">Second boundary.</param>
     /// <returns>True if the two boundaries are not equal.</returns>
+    [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
     public static bool operator !=(in Boundary boundary1, in Boundary boundary2)
     {
-        return boundary1.MinX != boundary2.MaxX ||
-               boundary1.MaxX != boundary2.MinX ||
-               boundary1.MinY != boundary2.MaxY ||
-               boundary1.MaxY != boundary2.MinY;
+        return boundary1.MaxX != boundary2.MaxX ||
+               boundary1.MinX != boundary2.MinX ||
+               boundary1.MaxY != boundary2.MaxY ||
+               boundary1.MinY != boundary2.MinY;
     }
 
     /// <summary>
