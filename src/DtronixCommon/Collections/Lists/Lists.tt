@@ -193,6 +193,19 @@ namespace DtronixCommon.Collections.Lists;
     }
 
     /// <summary>
+    /// Sets the value of the specified field with the return value of the function for the nth element.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="field"></param>
+    /// <param name="func"> Function which passes the current value and then assigns the result to the field.</param>
+    public void SetFunc(int index, int field, Func<<#=config.NumberType#>, <#=config.NumberType#>> func)
+    {
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
+        var i = index * _numFields + field;
+        _data[i] = func(_data[i]);
+    }
+
+    /// <summary>
     /// Clears the list, making it empty.
     /// </summary>
     public void Clear()

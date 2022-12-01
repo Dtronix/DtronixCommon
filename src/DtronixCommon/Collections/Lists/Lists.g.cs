@@ -157,6 +157,19 @@ public class FloatList
     }
 
     /// <summary>
+    /// Sets the value of the specified field with the return value of the function for the nth element.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="field"></param>
+    /// <param name="func"> Function which passes the current value and then assigns the result to the field.</param>
+    public void SetFunc(int index, int field, Func<float, float> func)
+    {
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
+        var i = index * _numFields + field;
+        _data[i] = func(_data[i]);
+    }
+
+    /// <summary>
     /// Clears the list, making it empty.
     /// </summary>
     public void Clear()
@@ -442,6 +455,19 @@ public class DoubleList
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
+    }
+
+    /// <summary>
+    /// Sets the value of the specified field with the return value of the function for the nth element.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="field"></param>
+    /// <param name="func"> Function which passes the current value and then assigns the result to the field.</param>
+    public void SetFunc(int index, int field, Func<double, double> func)
+    {
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
+        var i = index * _numFields + field;
+        _data[i] = func(_data[i]);
     }
 
     /// <summary>
@@ -733,6 +759,19 @@ public class IntList
     }
 
     /// <summary>
+    /// Sets the value of the specified field with the return value of the function for the nth element.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="field"></param>
+    /// <param name="func"> Function which passes the current value and then assigns the result to the field.</param>
+    public void SetFunc(int index, int field, Func<int, int> func)
+    {
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
+        var i = index * _numFields + field;
+        _data[i] = func(_data[i]);
+    }
+
+    /// <summary>
     /// Clears the list, making it empty.
     /// </summary>
     public void Clear()
@@ -1018,6 +1057,19 @@ public class LongList
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         _data[index * _numFields + field] = value;
+    }
+
+    /// <summary>
+    /// Sets the value of the specified field with the return value of the function for the nth element.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <param name="field"></param>
+    /// <param name="func"> Function which passes the current value and then assigns the result to the field.</param>
+    public void SetFunc(int index, int field, Func<long, long> func)
+    {
+        Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
+        var i = index * _numFields + field;
+        _data[i] = func(_data[i]);
     }
 
     /// <summary>
