@@ -2,12 +2,12 @@
 	<PropertyGroup>
 		<TargetFrameworks>net5.0;net6.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<Version>0.6.8.0</Version>
+		<Version>0.6.9.0</Version>
 		<Nullable>enable</Nullable>
 		<LangVersion>10</LangVersion>
 		<Company>Dtronix</Company>
 		<Product>Dtronix Common</Product>
-		<Copyright>Copyright © Dtronix 2022</Copyright>
+		<Copyright>Copyright © Dtronix 2023</Copyright>
 		<Authors>DJGosnell</Authors>
 		<PackageProjectUrl>https://github.com/Dtronix/DtronixCommon</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/Dtronix/DtronixCommon</RepositoryUrl>
@@ -27,7 +27,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
-		<PackageReference Include="Mono.TextTemplating" Version="2.2.1" />
+		<PackageReference Include="Mono.TextTemplating" Version="2.3.1" />
 		<TextTemplate Include="**\*.tt" />
 		<Generated Include="**\*.g.cs" />
 	</ItemGroup>

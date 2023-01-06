@@ -77,7 +77,7 @@ public readonly struct Boundary
     /// <summary>
     /// Returns true if the boundary has no volume.
     /// </summary>
-    public bool IsEmpty => MinY >= MaxY || MinX >= MaxX;
+    public bool IsEmpty => MinY >= MaxY && MinX >= MaxX;
 
     /// <summary>
     /// Creates a boundary with the specified left, bottom, right, top distances from origin.
