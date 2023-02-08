@@ -9,7 +9,7 @@ namespace DtronixCommonBenchmarks
     {
         public static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<SettingPropertiesBenchmarks>();
+            var summary = BenchmarkRunner.Run<QuadTreeBenchmarks>();
         }
     }
 }

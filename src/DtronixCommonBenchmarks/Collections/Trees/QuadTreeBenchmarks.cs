@@ -9,8 +9,11 @@ namespace DtronixCommonBenchmarks.Collections.Trees;
 [Config(typeof(FastConfig))]
 public class QuadTreeBenchmarks
 {
-    private FloatQuadTree<Item> _quadTree;
-    private FloatQuadTree<Item> _emptyQuadTree;
+
+    private FloatQuadTree<Item> _quadTreeF;
+    private DoubleQuadTree<Item> _quadTreeD;
+    private FloatQuadTree<Item> _quadTreeFFull;
+    private DoubleQuadTree<Item> _quadTreeDFull;
 
     private class Item : IQuadTreeItem
     {
@@ -22,29 +25,45 @@ public class QuadTreeBenchmarks
     {
         var offsetX = 5;
         var offsetY = 5;
-        _quadTree = new FloatQuadTree<Item>(10000, 10000, 8, 8, 1024);
-        _emptyQuadTree = new FloatQuadTree<Item>(10000, 10000, 8, 8, 200);
+        _quadTreeD = new DoubleQuadTree<Item>(10000, 10000, 8, 8, 200);
+        _quadTreeF = new FloatQuadTree<Item>(10000, 10000, 8, 8, 200);
+
+        _quadTreeFFull = new FloatQuadTree<Item>(10000, 10000, 8, 8, 1024);
         for (int x = 0; x < 50; x++)
         {
             for (int y = 0; y < 50; y++)
             {
-                _quadTree.Insert(
-                    x - offsetX + offsetX * x, 
-                    y - offsetY + offsetY * y, 
-                    x + offsetX + offsetX * x, 
+                _quadTreeFFull.Insert(
+                    x - offsetX + offsetX * x,
+                    y - offsetY + offsetY * y,
+                    x + offsetX + offsetX * x,
                     y + offsetY + offsetY * y, new Item());
             }
         }
+
+        _quadTreeDFull = new DoubleQuadTree<Item>(10000, 10000, 8, 8, 1024);
+        for (int x = 0; x < 50; x++)
+        {
+            for (int y = 0; y < 50; y++)
+            {
+                _quadTreeDFull.Insert(
+                    x - offsetX + offsetX * x,
+                    y - offsetY + offsetY * y,
+                    x + offsetX + offsetX * x,
+                    y + offsetY + offsetY * y, new Item());
+            }
+        }
+
     }
 
     [Benchmark]
-    public void Walk()
+    public void WalkFloat()
     {
-        _quadTree.Walk(-5000, -5000, 5000, 5000, item => true);
+        _quadTreeFFull.Walk(-5000, -5000, 5000, 5000, item => true);
     }
 
     [Benchmark]
-    public void Insert()
+    public void InsertFloat()
     {
         
         var offsetX = 5;
@@ -54,14 +73,42 @@ public class QuadTreeBenchmarks
         {
             for (int y = 0; y < 10; y++)
             {
-                _emptyQuadTree.Insert(
+                _quadTreeF.Insert(
                     x - offsetX + offsetX * x,
                     y - offsetY + offsetY * y,
                     x + offsetX + offsetX * x,
                     y + offsetY + offsetY * y, new Item());
             }
         }
-        _emptyQuadTree.Clear();
+        _quadTreeF.Clear();
+    }  
+    
+    [Benchmark]
+    public void InsertDouble()
+    {
+        
+        var offsetX = 5;
+        var offsetY = 5;
+        
+        for (int x = 0; x < 10; x++)
+        {
+            for (int y = 0; y < 10; y++)
+            {
+                _quadTreeD.Insert(
+                    x - offsetX + offsetX * x,
+                    y - offsetY + offsetY * y,
+                    x + offsetX + offsetX * x,
+                    y + offsetY + offsetY * y, new Item());
+            }
+        }
+        _quadTreeD.Clear();
+    }
+
+
+    [Benchmark]
+    public void WalkDouble()
+    {
+        _quadTreeDFull.Walk(-5000, -5000, 5000, 5000, item => true);
     }
 
 }

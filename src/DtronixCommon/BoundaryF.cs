@@ -10,7 +10,7 @@ namespace DtronixCommon;
 /// MinY could be down and MaxY up as in cartesian coordinates, or vice vercia as is common
 /// in screen coordinates.  Depends upon which system was selected for use.
 /// </remarks>
-public readonly struct Boundary
+public readonly struct BoundaryF
 {
     /// <summary>
     /// Minimum X coordinate position. (Left)
@@ -45,7 +45,7 @@ public readonly struct Boundary
     /// <summary>
     /// Maximum sized boundary.
     /// </summary>
-    public static Boundary Max { get; } = new(
+    public static BoundaryF Max { get; } = new(
         float.MinValue,
         float.MinValue,
         float.MaxValue,
@@ -54,7 +54,7 @@ public readonly struct Boundary
     /// <summary>
     /// Half the maximum size of the boundary.
     /// </summary>
-    public static Boundary HalfMax { get; } = new(
+    public static BoundaryF HalfMax { get; } = new(
         float.MinValue / 2,
         float.MinValue / 2,
         float.MaxValue / 2,
@@ -63,12 +63,12 @@ public readonly struct Boundary
     /// <summary>
     /// Zero sized boundary.
     /// </summary>
-    public static Boundary Zero { get; } = new(0, 0, 0, 0);
+    public static BoundaryF Zero { get; } = new(0, 0, 0, 0);
 
     /// <summary>
     /// Empty boundary.
     /// </summary>
-    public static Boundary Empty { get; } = new(
+    public static BoundaryF Empty { get; } = new(
         float.PositiveInfinity,
         float.PositiveInfinity,
         float.NegativeInfinity,
@@ -86,7 +86,7 @@ public readonly struct Boundary
     /// <param name="minY">Bottom distance from origin.</param>
     /// <param name="maxX">Right distance from origin.</param>
     /// <param name="maxY">Top distance from origin.</param>
-    public Boundary(float minX, float minY, float maxX, float maxY)
+    public BoundaryF(float minX, float minY, float maxX, float maxY)
     {
         MinX = minX;
         MinY = minY;
@@ -105,7 +105,7 @@ public readonly struct Boundary
     /// </returns>
     /// <param name="boundary"> Rect </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IntersectsWith(in Boundary boundary)
+    public bool IntersectsWith(in BoundaryF boundary)
     {
         return boundary.MinX <= MaxX &&
                boundary.MaxX >= MinX &&
@@ -125,7 +125,7 @@ public readonly struct Boundary
     /// Returns false otherwise.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool Intersects(in Boundary boundary1, in Boundary boundary2)
+    public static bool Intersects(in BoundaryF boundary1, in BoundaryF boundary2)
     {
         return boundary1.MinX <= boundary2.MaxX &&
                boundary1.MaxX >= boundary2.MinX &&
@@ -154,9 +154,9 @@ public readonly struct Boundary
     /// <param name="x">X vector offset.</param>
     /// <param name="y">Y vector offset.</param>
     /// <returns>New offset boundary.</returns>
-    public Boundary CreateOffset(in float x, in float y)
+    public BoundaryF CreateOffset(in float x, in float y)
     {
-        return new Boundary(
+        return new BoundaryF(
             (float)(MinX + x),
             (float)(MinY + y),
             (float)(MaxX + x),
@@ -168,7 +168,7 @@ public readonly struct Boundary
     /// </summary>
     /// <param name="boundary">second boundary to union with.</param>
     /// <returns>new union boundary.</returns>
-    public Boundary Union(in Boundary boundary)
+    public BoundaryF Union(in BoundaryF boundary)
     {
         if (IsEmpty)
             return boundary;
@@ -176,11 +176,11 @@ public readonly struct Boundary
         if (boundary.IsEmpty)
             return this;
 
-        return new Boundary(
-            Math.Min(MinX, boundary.MinX),
-            Math.Min(MinY, boundary.MinY),
-            Math.Max(MaxX, boundary.MaxX),
-            Math.Max(MaxY, boundary.MaxY));
+        return new BoundaryF(
+            MathF.Min(MinX, boundary.MinX),
+            MathF.Min(MinY, boundary.MinY),
+            MathF.Max(MaxX, boundary.MaxX),
+            MathF.Max(MaxY, boundary.MaxY));
     }
 
     /// <summary>
@@ -228,7 +228,7 @@ public readonly struct Boundary
     /// </summary>
     /// <param name="degrees">Degrees to rotate.</param>
     /// <returns>New rotated boundary.</returns>
-    public Boundary Rotate(float degrees)
+    public BoundaryF Rotate(float degrees)
     {
         // Center position of the rectangle.
         //private const m_PosX : Number, m_PosY : Number;
@@ -260,7 +260,7 @@ public readonly struct Boundary
         // ex, ey are extents (half-sizes) of the final AABB.
         var ex = MathF.Max(MathF.Abs(xformed_corner_1_x), MathF.Abs(xformed_corner_2_x));
         var ey = MathF.Max(MathF.Abs(xformed_corner_1_y), MathF.Abs(xformed_corner_2_y));
-        return new Boundary(m_PosX - ex, m_PosY - ey, m_PosX + ex, m_PosY + ey);
+        return new BoundaryF(m_PosX - ex, m_PosY - ey, m_PosX + ex, m_PosY + ey);
         //var aabb_min_x = m_PosX - ex;
         //var aabb_max_x = m_PosX + ex;
         //var aabb_min_y = m_PosY - ey;
@@ -274,9 +274,9 @@ public readonly struct Boundary
     /// <param name="boundary2">Second boundary.</param>
     /// <returns>New union boundary.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Boundary Union(in Boundary boundary1, in Boundary boundary2)
+    public static BoundaryF Union(in BoundaryF boundary1, in BoundaryF boundary2)
     {
-        return new Boundary(
+        return new BoundaryF(
             boundary1.MinX < boundary2.MinX ? boundary1.MinX : boundary2.MinX,
             boundary1.MinY < boundary2.MinY ? boundary1.MinY : boundary2.MinY,
             boundary1.MaxX > boundary2.MaxX ? boundary1.MaxX : boundary2.MaxX,
@@ -299,7 +299,7 @@ public readonly struct Boundary
     /// <param name="boundary1">First boundary.</param>
     /// <param name="boundary2">Second boundary.</param>
     /// <returns>True if the two boundaries are equal.</returns>
-    public static bool operator ==(in Boundary boundary1, in Boundary boundary2)
+    public static bool operator ==(in BoundaryF boundary1, in BoundaryF boundary2)
     {
         return boundary1.Equals(boundary2);
     }
@@ -311,7 +311,7 @@ public readonly struct Boundary
     /// <param name="boundary2">Second boundary.</param>
     /// <returns>True if the two boundaries are not equal.</returns>
     [SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator")]
-    public static bool operator !=(in Boundary boundary1, in Boundary boundary2)
+    public static bool operator !=(in BoundaryF boundary1, in BoundaryF boundary2)
     {
         return boundary1.MaxX != boundary2.MaxX ||
                boundary1.MinX != boundary2.MinX ||
@@ -325,7 +325,7 @@ public readonly struct Boundary
     /// <param name="other">Other boundary.</param>
     /// <returns>True if the two boundaries are equal.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Equals(in Boundary other)
+    public bool Equals(in BoundaryF other)
     {
         return MinX.Equals(other.MinX)
                && MinY.Equals(other.MinY)
@@ -341,7 +341,7 @@ public readonly struct Boundary
     /// <returns>True if the two boundaries are equal.</returns>
     public override bool Equals(object? obj)
     {
-        return obj is Boundary other && Equals(other);
+        return obj is BoundaryF other && Equals(other);
     }
 
     /// <summary>
@@ -361,9 +361,9 @@ public readonly struct Boundary
     /// <param name="radius">Radius of the circle.</param>
     /// <returns>New boundary.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Boundary FromCircle(float x, float y, float radius)
+    public static BoundaryF FromCircle(float x, float y, float radius)
     {
-        return new Boundary(
+        return new BoundaryF(
             x - radius,
             y - radius,
             x + radius,
