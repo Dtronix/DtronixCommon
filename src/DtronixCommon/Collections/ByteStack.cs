@@ -8,10 +8,10 @@
 /// This class is intended to be used within a non-threaded or locked environment to ensure sequential
 /// pushing and popping of the stack.
 /// </remarks>
-#if SET_INTERNAL
+#if DTRONIX_COMMON_SET_CLASSES_INTERNAL
 internal
 #else
-public 
+public
 #endif
 class ByteStack
 {
