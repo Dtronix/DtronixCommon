@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -29,7 +28,7 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
     private const int DefaultMaxNumberOfArraysPerBucket = 50;
     public override int MaxBufferSize { get; }
 
-    private readonly ConcurrentBag<OwnedMemory> _ownedMemoryCache = new ConcurrentBag<OwnedMemory>();
+    //private readonly ConcurrentBag<OwnedMemory> _ownedMemoryCache = new ConcurrentBag<OwnedMemory>();
 
     private readonly Bucket[] _buckets;
 
@@ -62,7 +61,6 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
                 GetMaxSizeForBucket(i),
                 arraysPerBucket,
                 memoryBuffer.Slice(arraySize, capacity),
-                _ownedMemoryCache,
                 pinned);
         }
         _buckets = buckets;
@@ -123,25 +121,19 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
             ? MemoryMarshal.CreateFromPinnedArray(byteBuffer, 0, byteBuffer.Length)
             : new Memory<T>(byteBuffer);
 
-        // See if we can use a cached ownedMemory.
-        if (!_ownedMemoryCache.TryTake(out var ownedMemory))
-            return new OwnedMemory(null, array, 0);
-
-        ownedMemory.Set(null, array, 0);
-        return ownedMemory;
+        return new OwnedMemory(null, array, 0);
     }
 
 
     protected override void Dispose(bool disposing)
     {
-        _ownedMemoryCache.Clear();
+        // noop
     }
-    
+
     /// <summary>Provides a thread-safe bucket containing buffers that can be Rent'd and Return'd.</summary>
     internal sealed class Bucket
     {
         private readonly int _bufferLength;
-        private readonly ConcurrentBag<OwnedMemory> _ownedMemoryCache;
         private readonly bool _pinned;
         private readonly Memory<T>[] _buffers;
         private readonly ByteStack _freeStack;
@@ -155,7 +147,6 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
             int bufferLength,
             int numberOfBuffers,
             Memory<T> memory,
-            ConcurrentBag<OwnedMemory> ownedMemoryCache,
             bool pinned)
         {
             if (numberOfBuffers > 256)
@@ -175,7 +166,6 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
                 currentPos += bufferLength;
             }
             _bufferLength = bufferLength;
-            _ownedMemoryCache = ownedMemoryCache;
             _pinned = pinned;
         }
 
@@ -188,15 +178,7 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
                 _lock.Enter(ref lockTaken);
                 if (_freeStack.TryPop(out var freeIndex))
                 {
-                    if (_ownedMemoryCache?.TryTake(out var ownedMemory) == true)
-                    {
-                        ownedMemory.Set(this, _buffers[freeIndex], freeIndex);
-                        memory = ownedMemory;
-                    }
-                    else
-                    {
-                        memory = new OwnedMemory(this, _buffers[freeIndex], freeIndex);
-                    }
+                    memory = new OwnedMemory(this, _buffers[freeIndex], freeIndex);
 
                     return true;
                 }
@@ -226,7 +208,6 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
             {
                 _lock.Enter(ref lockTaken);
                 _freeStack.Push((byte)memory.Index);
-                _ownedMemoryCache.Add(memory);
             }
             finally
             {
@@ -237,7 +218,7 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
     internal sealed class OwnedMemory : IMemoryOwner<T>
     {
         private Bucket? _bucket;
-        private byte _index;
+        private readonly byte _index;
         private Memory<T> _memory;
 
         public Memory<T> Memory => _memory;
@@ -251,16 +232,10 @@ sealed partial class AllocatedMemoryPool<T> : MemoryPool<T>
             _memory = memory;
         }
 
-        public void Set(Bucket? bucket, Memory<T> memory, byte index)
-        {
-            _bucket = bucket;
-            _index = index;
-            _memory = memory;
-        }
-
         public void Dispose()
         {
             _memory = null;
+
             var bucket = Interlocked.Exchange(ref _bucket, null);
 
             // If the bucket is null, don't do anything as the memory was allocated specifically for this 

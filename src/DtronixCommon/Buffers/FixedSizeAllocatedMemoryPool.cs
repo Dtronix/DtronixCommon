@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
-using DtronixCommon.Collections;
 
 namespace DtronixCommon.Buffers;
 
@@ -28,8 +24,6 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
     private Memory<T> _memory;
     private bool _dispoed = false;
     public override int MaxBufferSize { get; }
-
-    private readonly ConcurrentBag<OwnedMemory> _ownedMemoryCache = new ConcurrentBag<OwnedMemory>();
 
     internal FixedSizeAllocatedMemoryPool(int arrayLength, int count, bool pinned = false)
     {
@@ -54,7 +48,6 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
     {
         Memory<T> memory;
         bool lockTaken = false;
-        short index = -1;
         try
         {
             _lock.Enter(ref lockTaken);
@@ -69,25 +62,19 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
                 memory = _pinned
                     ? MemoryMarshal.CreateFromPinnedArray(byteBuffer, 0, byteBuffer.Length)
                     : new Memory<T>(byteBuffer);
+
+                return new OwnedMemory(null, memory, -1);
             }
             else
             {
                 memory = _memory.Slice(freeIndex * _arrayLength, _arrayLength);
-                index = freeIndex;
+                return new OwnedMemory(this, memory, freeIndex);
             }
         }
         finally
         {
             if (lockTaken) _lock.Exit(false);
         }
-
-        // See if we can use a cached ownedMemory.
-        if (!_ownedMemoryCache.TryTake(out var ownedMemory))
-            return new OwnedMemory(this, memory, index);
-
-        ownedMemory.Set(memory, 0);
-        
-        return ownedMemory;
     }
 
     /// <summary>
@@ -115,8 +102,6 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
             if (lockTaken) 
                 _lock.Exit(false);
         }
-
-        _ownedMemoryCache.Add(memory);
     }
 
 
@@ -127,28 +112,21 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
 
         _dispoed = true;
         _memory = null;
-        _ownedMemoryCache.Clear();
     }
 
     internal sealed class OwnedMemory : IMemoryOwner<T>
     {
-        private readonly FixedSizeAllocatedMemoryPool<T> _pool;
-        private int _index;
+        private FixedSizeAllocatedMemoryPool<T>? _pool;
+        private readonly int _index;
         private Memory<T> _memory;
 
         public Memory<T> Memory => _memory;
 
         public int Index => _index;
 
-        public OwnedMemory(FixedSizeAllocatedMemoryPool<T> pool, Memory<T> memory, int index)
+        public OwnedMemory(FixedSizeAllocatedMemoryPool<T>? pool, Memory<T> memory, int index)
         {
             _pool = pool;
-            _index = index;
-            _memory = memory;
-        }
-
-        public void Set(Memory<T> memory, byte index)
-        {
             _index = index;
             _memory = memory;
         }
@@ -156,14 +134,15 @@ sealed partial class FixedSizeAllocatedMemoryPool<T> : MemoryPool<T>
         public void Dispose()
         {
             _memory = null;
-            var index = Interlocked.Exchange(ref _index, -1);
+
+            var pool = Interlocked.Exchange(ref _pool, null);
 
             // If the bucket is null, don't do anything as the memory was allocated specifically for this 
             // instance or has already been disposed.
-            if (index == -1)
+            if (pool == null)
                 return;
 
-            _pool.Return(this, (short)index);
+            pool.Return(this, (short)_index);
         }
     }
 }

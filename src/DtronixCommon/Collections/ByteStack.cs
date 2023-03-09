@@ -1,4 +1,6 @@
-﻿namespace DtronixCommon.Collections;
+﻿using System;
+
+namespace DtronixCommon.Collections;
 
 /// <summary>
 /// Queue which has a maximum size of 256 values and a range of: 0 &#8804; value &#8804; 256.
