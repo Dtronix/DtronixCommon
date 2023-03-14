@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -20,7 +18,7 @@ internal
 #else
 public
 #endif
-sealed partial class AllocatedMemoryPool<T>
+sealed partial class AllocatedOwnedMemoryPool<T> : MemoryPool<T>
 {
     private readonly bool _pinned;
 
@@ -28,14 +26,16 @@ sealed partial class AllocatedMemoryPool<T>
     private const int DefaultMaxArrayLength = 1024 * 1024;
     /// <summary>The default maximum number of arrays per bucket that are available for rent.</summary>
     private const int DefaultMaxNumberOfArraysPerBucket = 50;
-    public int MaxBufferSize { get; }
+    public override int MaxBufferSize { get; }
 
     //private readonly ConcurrentBag<OwnedMemory> _ownedMemoryCache = new ConcurrentBag<OwnedMemory>();
 
     private readonly Bucket[] _buckets;
 
-    internal AllocatedMemoryPool(int maxArrayLength, int arraysPerBucket, bool pinned = false)
+    internal AllocatedOwnedMemoryPool(int maxArrayLength, int arraysPerBucket, bool pinned = false)
     {
+        if (arraysPerBucket > 256)
+            throw new ArgumentOutOfRangeException(nameof(arraysPerBucket), "Must be maximum of 256 arrays.");
         _pinned = pinned;
 
         // Create the buckets.
@@ -45,9 +45,7 @@ sealed partial class AllocatedMemoryPool<T>
 
         int arraySize = 0;
         for (int i = 0; i < buckets.Length; i++)
-        {
             arraySize += GetMaxSizeForBucket(i) * arraysPerBucket;
-        }
 
         var buffer = GC.AllocateUninitializedArray<T>(arraySize, pinned);
 
@@ -87,7 +85,8 @@ sealed partial class AllocatedMemoryPool<T>
         return maxSize;
     }
 
-    public unsafe Memory<T> Rent(int minBufferSize = -1)
+    /// <inheritdoc />
+    public override unsafe IMemoryOwner<T> Rent(int minBufferSize = -1)
     {
 #pragma warning disable CS8500
         if (minBufferSize == -1)
@@ -108,7 +107,7 @@ sealed partial class AllocatedMemoryPool<T>
             {
                 // Attempt to rent from the bucket.  If we get a buffer from it, return it.
                 if (_buckets[i].TryRent(out var memory))
-                    return memory!.Value;
+                    return memory!;
             }
             while (++i < _buckets.Length && i != index + maxBucketsToTry);
         }
@@ -117,35 +116,18 @@ sealed partial class AllocatedMemoryPool<T>
         // Allocate an array of exactly the requested length.
         // When it's returned to the pool, we'll simply throw it away.
         var byteBuffer = GC.AllocateUninitializedArray<T>(minBufferSize, _pinned);
-        
-        return _pinned
+
+        var array = _pinned
             ? MemoryMarshal.CreateFromPinnedArray(byteBuffer, 0, byteBuffer.Length)
             : new Memory<T>(byteBuffer);
+
+        return new OwnedMemory(null, array, 0);
     }
 
-    public void Return(Memory<T>? memory)
+
+    protected override void Dispose(bool disposing)
     {
-        if (memory == null)
-            return;
-
-        if (memory.Value.Length == 0)
-        {
-            // Ignore empty arrays.  When a zero-length array is rented, we return a singleton
-            // rather than actually taking a buffer out of the lowest bucket.
-            return;
-        }
-
-        int bucketIndex = SelectBucketIndex(memory.Value.Length);
-
-        // If we can tell that the buffer was allocated, drop it. Otherwise, check if we have space in the pool
-        bool haveBucket = bucketIndex < _buckets.Length;
-        if (haveBucket)
-        {
-            // Return the buffer to its bucket.  In the future, we might consider having Return return false
-            // instead of dropping a bucket, in which case we could try to return to a lower-sized bucket,
-            // just as how in Rent we allow renting from a higher-sized bucket.
-            _buckets[bucketIndex].Return(memory.Value);
-        }
+        // noop
     }
 
     /// <summary>Provides a thread-safe bucket containing buffers that can be Rent'd and Return'd.</summary>
@@ -153,9 +135,8 @@ sealed partial class AllocatedMemoryPool<T>
     {
         private readonly int _bufferLength;
         private readonly bool _pinned;
-        private readonly Memory<T>?[] _buffers;
-        private HashSet<int> _rentedBufferIds = new HashSet<int>();
-        private int _index;
+        private readonly Memory<T>[] _buffers;
+        private readonly ByteStack _freeStack;
 
         private SpinLock _lock; // do not make this readonly; it's a mutable struct
 
@@ -168,18 +149,19 @@ sealed partial class AllocatedMemoryPool<T>
             Memory<T> memory,
             bool pinned)
         {
-            //_hashBuffers.TryGetValue()
             if (numberOfBuffers > 256)
                 throw new ArgumentOutOfRangeException(nameof(numberOfBuffers),
                     "Number of buffers must be equal to or less than 256");
 
             _lock = new SpinLock();
-            _buffers = new Memory<T>?[numberOfBuffers];
-            _index = numberOfBuffers - 1;
+            _buffers = new Memory<T>[numberOfBuffers];
+            var freeStackBytes = new byte[numberOfBuffers];
+            _freeStack = new ByteStack(freeStackBytes, numberOfBuffers);
 
             var currentPos = 0;
             for (int i = 0; i < numberOfBuffers; i++)
             {
+                freeStackBytes[i] = (byte)i;
                 _buffers[i] = memory.Slice(currentPos, bufferLength);
                 currentPos += bufferLength;
             }
@@ -188,31 +170,26 @@ sealed partial class AllocatedMemoryPool<T>
         }
 
         /// <summary>Takes an memory from the bucket.  If the bucket is empty, allocates a new array.</summary>
-        internal bool TryRent(out Memory<T>? memory)
+        internal bool TryRent(out IMemoryOwner<T>? memory)
         {
             bool lockTaken = false;
             try
             {
                 _lock.Enter(ref lockTaken);
-                if (_index >= 0)
+                if (_freeStack.TryPop(out var freeIndex))
                 {
-                    memory = _buffers[_index];
-                    _buffers[_index--] = null;
+                    memory = new OwnedMemory(this, _buffers[freeIndex], freeIndex);
 
-                    if (memory == null)
-                        return false;
-
-                    return _rentedBufferIds.Add(memory.GetHashCode());
+                    return true;
                 }
-
-                // We don't have any more available to rent.
-                memory = null;
-                return false;
             }
             finally
             {
                 if (lockTaken) _lock.Exit(false);
             }
+
+            memory = null;
+            return false;
         }
 
         /// <summary>
@@ -220,7 +197,7 @@ sealed partial class AllocatedMemoryPool<T>
         /// in the bucket and true will be returned; otherwise, the buffer won't be stored, and false
         /// will be returned.
         /// </summary>
-        internal void Return(Memory<T> memory)
+        internal void Return(OwnedMemory memory)
         {
             // While holding the spin lock, if there's room available in the bucket,
             // put the buffer into the next available slot.  Otherwise, we just drop it.
@@ -230,21 +207,43 @@ sealed partial class AllocatedMemoryPool<T>
             try
             {
                 _lock.Enter(ref lockTaken);
-
-                // If we can not remove the ID from the list, that means that this memory was not
-                // part of this bucket.
-                if(!_rentedBufferIds.Remove(memory.GetHashCode()))
-                    return;
-
-                if (_index < _buffers.Length)
-                {
-                    _buffers[++_index] = memory;
-                }
+                _freeStack.Push((byte)memory.Index);
             }
             finally
             {
                 if (lockTaken) _lock.Exit(false);
             }
+        }
+    }
+    internal sealed class OwnedMemory : IMemoryOwner<T>
+    {
+        private Bucket? _bucket;
+        private readonly byte _index;
+        private Memory<T> _memory;
+
+        public Memory<T> Memory => _memory;
+
+        public byte Index => _index;
+
+        public OwnedMemory(Bucket? bucket, Memory<T> memory, byte index)
+        {
+            _bucket = bucket;
+            _index = index;
+            _memory = memory;
+        }
+
+        public void Dispose()
+        {
+            _memory = null;
+
+            var bucket = Interlocked.Exchange(ref _bucket, null);
+
+            // If the bucket is null, don't do anything as the memory was allocated specifically for this 
+            // instance or has already been disposed.
+            if (bucket == null)
+                return;
+
+            bucket.Return(this);
         }
     }
 }
