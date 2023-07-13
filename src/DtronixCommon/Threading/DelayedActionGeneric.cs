@@ -7,6 +7,7 @@
 public class DelayedAction<TArgs> : DelayedAction
     where TArgs : struct
 {
+    private readonly Action<TArgs> _action;
     private TArgs _arguments;
 
     /// <summary>
@@ -16,9 +17,14 @@ public class DelayedAction<TArgs> : DelayedAction
     /// <param name="maxCullingDelay">Maximum delay that calls will be culled.</param>
     /// <param name="action">Action to be invoked with the arguments passed.</param>
     public DelayedAction(int cullingInterval, int maxCullingDelay, Action<TArgs> action)
-        : base(cullingInterval, maxCullingDelay, null)
+        : base(cullingInterval, maxCullingDelay, () => { })
     {
-        Action = () => action(_arguments);
+        _action = action ?? throw new ArgumentNullException(nameof(action));
+    }
+
+    protected override void OnCallback()
+    {
+        _action.Invoke(_arguments);
     }
 
     /// <summary>
