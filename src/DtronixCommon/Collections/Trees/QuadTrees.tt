@@ -32,6 +32,7 @@
 		}
 	};
 #>
+#nullable enable
 // ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
@@ -50,7 +51,7 @@ namespace DtronixCommon.Collections.Trees;
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class <#=config.ClassName#><T>
+public class <#=config.ClassName#><T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -116,7 +117,7 @@ public class <#=config.ClassName#><T>
     // Data Members
     // ----------------------------------------------------------------------------------------
     // Temporary buffer used for queries.
-    private bool[] _temp;
+    private bool[]? _temp;
 
     // Stores the size of the temporary buffer.
     private int _tempSize = 0;
@@ -128,7 +129,7 @@ public class <#=config.ClassName#><T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items;
+    private T[]? items;
 
     private readonly <#=config.MainNumberType#>[] _rootNode;
 
@@ -217,7 +218,7 @@ public class <#=config.ClassName#><T>
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
-        if (newElement == items.Length)
+        if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
@@ -274,7 +275,7 @@ public class <#=config.ClassName#><T>
         leaves.Return();
         // Remove the element.
         _eleBounds.Erase(id);
-        items[id] = default;
+        items![id] = default!;
         _quadTreeIdSetter(element, -1);
     }
 
@@ -373,9 +374,9 @@ public class <#=config.ClassName#><T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp![element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    listOut.Add(items[element]!);
+                    listOut.Add(items![element]);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
@@ -386,7 +387,7 @@ public class <#=config.ClassName#><T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[listOut[j].QuadTreeId] = false;
+            _temp![listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -436,11 +437,11 @@ public class <#=config.ClassName#><T>
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    _temp[element] = true;
+                    _temp![element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
@@ -453,7 +454,7 @@ public class <#=config.ClassName#><T>
 
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.InternalCount; ++j)
-            _temp[intListOut.Get(j, 0)] = false;
+            _temp![intListOut.Get(j, 0)] = false;
 
         return intListOut;
     }
@@ -495,7 +496,7 @@ public class <#=config.ClassName#><T>
                 element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                 }
@@ -517,8 +518,12 @@ public class <#=config.ClassName#><T>
         _eleNodes.Clear();
         _nodes.Clear();
         _eleBounds.Clear();
-        Array.Clear(items, 0, items.Length);
 
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
         _nodes.Insert();
         _nodes.Set(0, _nodeIdxFc, -1);
         _nodes.Set(0, _nodeIdxNum, 0);
@@ -664,6 +669,25 @@ public class <#=config.ClassName#><T>
             // Increment the leaf element count.
             _nodes.Increment(node, _nodeIdxNum);
         }
+    }
+
+    /// <summary>
+    /// Disposes the quad tree.
+    /// </summary>
+    public void Dispose()
+    {
+        if(items == null)
+            return;
+
+        _eleNodes?.Dispose();
+        _eleBounds?.Dispose();
+        _nodes?.Dispose();
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
+        items = null!;
     }
 }
 <#

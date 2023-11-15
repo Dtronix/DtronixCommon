@@ -1,3 +1,4 @@
+#nullable enable
 // ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
@@ -13,7 +14,7 @@ namespace DtronixCommon.Collections.Lists;
 /// List of float with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-public class FloatList
+public class FloatList : IDisposable
 {
     public class Cache
     {
@@ -59,7 +60,7 @@ public class FloatList
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private float[] _data;
+    private float[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -114,7 +115,7 @@ public class FloatList
     public float Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data[index * _numFields + field];
+        return _data![index * _numFields + field];
     }
 
     /// <summary>
@@ -153,7 +154,7 @@ public class FloatList
     public void Set(int index, int field, float value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field] = value;
+        _data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -175,7 +176,7 @@ public class FloatList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -199,7 +200,7 @@ public class FloatList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -228,13 +229,13 @@ public class FloatList
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]++;
+        _data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]--;
+        _data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -250,7 +251,7 @@ public class FloatList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             return index;
@@ -273,7 +274,7 @@ public class FloatList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             values.CopyTo(_data.AsSpan(index * _numFields));
@@ -292,8 +293,16 @@ public class FloatList
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data[pos] = _freeElement;
+        _data![pos] = _freeElement;
         _freeElement = index;
+    }
+
+    /// <summary>
+    /// Disposes of the list.
+    /// </summary>
+    public void Dispose()
+    {
+        _data = null;
     }
 }
 
@@ -301,7 +310,7 @@ public class FloatList
 /// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-public class DoubleList
+public class DoubleList : IDisposable
 {
     public class Cache
     {
@@ -347,7 +356,7 @@ public class DoubleList
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private double[] _data;
+    private double[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -402,7 +411,7 @@ public class DoubleList
     public double Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data[index * _numFields + field];
+        return _data![index * _numFields + field];
     }
 
     /// <summary>
@@ -441,7 +450,7 @@ public class DoubleList
     public void Set(int index, int field, double value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field] = value;
+        _data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -463,7 +472,7 @@ public class DoubleList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -487,7 +496,7 @@ public class DoubleList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -516,13 +525,13 @@ public class DoubleList
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]++;
+        _data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]--;
+        _data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -538,7 +547,7 @@ public class DoubleList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             return index;
@@ -561,7 +570,7 @@ public class DoubleList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             values.CopyTo(_data.AsSpan(index * _numFields));
@@ -580,8 +589,16 @@ public class DoubleList
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data[pos] = _freeElement;
+        _data![pos] = _freeElement;
         _freeElement = index;
+    }
+
+    /// <summary>
+    /// Disposes of the list.
+    /// </summary>
+    public void Dispose()
+    {
+        _data = null;
     }
 }
 
@@ -589,7 +606,7 @@ public class DoubleList
 /// List of int with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-public class IntList
+public class IntList : IDisposable
 {
     public class Cache
     {
@@ -635,7 +652,7 @@ public class IntList
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private int[] _data;
+    private int[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -690,7 +707,7 @@ public class IntList
     public int Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data[index * _numFields + field];
+        return _data![index * _numFields + field];
     }
 
     /// <summary>
@@ -729,7 +746,7 @@ public class IntList
     public void Set(int index, int field, int value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field] = value;
+        _data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -751,7 +768,7 @@ public class IntList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -775,7 +792,7 @@ public class IntList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -804,13 +821,13 @@ public class IntList
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]++;
+        _data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]--;
+        _data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -826,7 +843,7 @@ public class IntList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             return index;
@@ -849,7 +866,7 @@ public class IntList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             values.CopyTo(_data.AsSpan(index * _numFields));
@@ -868,8 +885,16 @@ public class IntList
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data[pos] = _freeElement;
+        _data![pos] = _freeElement;
         _freeElement = index;
+    }
+
+    /// <summary>
+    /// Disposes of the list.
+    /// </summary>
+    public void Dispose()
+    {
+        _data = null;
     }
 }
 
@@ -877,7 +902,7 @@ public class IntList
 /// List of long with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-public class LongList
+public class LongList : IDisposable
 {
     public class Cache
     {
@@ -923,7 +948,7 @@ public class LongList
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private long[] _data;
+    private long[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -978,7 +1003,7 @@ public class LongList
     public long Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data[index * _numFields + field];
+        return _data![index * _numFields + field];
     }
 
     /// <summary>
@@ -1017,7 +1042,7 @@ public class LongList
     public void Set(int index, int field, long value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field] = value;
+        _data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -1039,7 +1064,7 @@ public class LongList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -1063,7 +1088,7 @@ public class LongList
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -1092,13 +1117,13 @@ public class LongList
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]++;
+        _data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]--;
+        _data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -1114,7 +1139,7 @@ public class LongList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             return index;
@@ -1137,7 +1162,7 @@ public class LongList
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             values.CopyTo(_data.AsSpan(index * _numFields));
@@ -1156,7 +1181,15 @@ public class LongList
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data[pos] = _freeElement;
+        _data![pos] = _freeElement;
         _freeElement = index;
+    }
+
+    /// <summary>
+    /// Disposes of the list.
+    /// </summary>
+    public void Dispose()
+    {
+        _data = null;
     }
 }

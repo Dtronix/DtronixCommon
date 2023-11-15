@@ -32,6 +32,7 @@
 		}
 	};
 #>
+#nullable enable
 // ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
@@ -49,7 +50,7 @@ namespace DtronixCommon.Collections.Lists;
 /// List of <#=config.NumberType#> with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-<#=config.Visibility#> class <#=config.ClassName#>
+<#=config.Visibility#> class <#=config.ClassName#> : IDisposable
 {
     public class Cache
     {
@@ -95,7 +96,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private <#=config.NumberType#>[] _data;
+    private <#=config.NumberType#>[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -150,7 +151,7 @@ namespace DtronixCommon.Collections.Lists;
     public <#=config.NumberType#> Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data[index * _numFields + field];
+        return _data![index * _numFields + field];
     }
 
     /// <summary>
@@ -189,7 +190,7 @@ namespace DtronixCommon.Collections.Lists;
     public void Set(int index, int field, <#=config.NumberType#> value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field] = value;
+        _data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -211,7 +212,7 @@ namespace DtronixCommon.Collections.Lists;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -235,7 +236,7 @@ namespace DtronixCommon.Collections.Lists;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
@@ -264,13 +265,13 @@ namespace DtronixCommon.Collections.Lists;
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]++;
+        _data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data[index * _numFields + field]--;
+        _data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -286,7 +287,7 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             return index;
@@ -309,7 +310,7 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data[pos];
+            _freeElement = (int)_data![pos];
 
             // Return the free index.
             values.CopyTo(_data.AsSpan(index * _numFields));
@@ -328,8 +329,16 @@ namespace DtronixCommon.Collections.Lists;
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data[pos] = _freeElement;
+        _data![pos] = _freeElement;
         _freeElement = index;
+    }
+
+    /// <summary>
+    /// Disposes of the list.
+    /// </summary>
+    public void Dispose()
+    {
+        _data = null;
     }
 }
 <#

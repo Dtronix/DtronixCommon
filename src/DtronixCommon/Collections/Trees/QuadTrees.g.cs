@@ -1,3 +1,4 @@
+#nullable enable
 // ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
@@ -12,7 +13,7 @@ namespace DtronixCommon.Collections.Trees;
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class FloatQuadTree<T>
+public class FloatQuadTree<T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -78,7 +79,7 @@ public class FloatQuadTree<T>
     // Data Members
     // ----------------------------------------------------------------------------------------
     // Temporary buffer used for queries.
-    private bool[] _temp;
+    private bool[]? _temp;
 
     // Stores the size of the temporary buffer.
     private int _tempSize = 0;
@@ -90,7 +91,7 @@ public class FloatQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items;
+    private T[]? items;
 
     private readonly float[] _rootNode;
 
@@ -179,7 +180,7 @@ public class FloatQuadTree<T>
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
-        if (newElement == items.Length)
+        if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
@@ -236,7 +237,7 @@ public class FloatQuadTree<T>
         leaves.Return();
         // Remove the element.
         _eleBounds.Erase(id);
-        items[id] = default;
+        items![id] = default!;
         _quadTreeIdSetter(element, -1);
     }
 
@@ -335,9 +336,9 @@ public class FloatQuadTree<T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp![element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    listOut.Add(items[element]!);
+                    listOut.Add(items![element]);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
@@ -348,7 +349,7 @@ public class FloatQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[listOut[j].QuadTreeId] = false;
+            _temp![listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -398,11 +399,11 @@ public class FloatQuadTree<T>
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    _temp[element] = true;
+                    _temp![element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
@@ -415,7 +416,7 @@ public class FloatQuadTree<T>
 
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.InternalCount; ++j)
-            _temp[intListOut.Get(j, 0)] = false;
+            _temp![intListOut.Get(j, 0)] = false;
 
         return intListOut;
     }
@@ -457,7 +458,7 @@ public class FloatQuadTree<T>
                 element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                 }
@@ -479,8 +480,12 @@ public class FloatQuadTree<T>
         _eleNodes.Clear();
         _nodes.Clear();
         _eleBounds.Clear();
-        Array.Clear(items, 0, items.Length);
 
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
         _nodes.Insert();
         _nodes.Set(0, _nodeIdxFc, -1);
         _nodes.Set(0, _nodeIdxNum, 0);
@@ -627,11 +632,30 @@ public class FloatQuadTree<T>
             _nodes.Increment(node, _nodeIdxNum);
         }
     }
+
+    /// <summary>
+    /// Disposes the quad tree.
+    /// </summary>
+    public void Dispose()
+    {
+        if(items == null)
+            return;
+
+        _eleNodes?.Dispose();
+        _eleBounds?.Dispose();
+        _nodes?.Dispose();
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
+        items = null!;
+    }
 }
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class LongQuadTree<T>
+public class LongQuadTree<T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -697,7 +721,7 @@ public class LongQuadTree<T>
     // Data Members
     // ----------------------------------------------------------------------------------------
     // Temporary buffer used for queries.
-    private bool[] _temp;
+    private bool[]? _temp;
 
     // Stores the size of the temporary buffer.
     private int _tempSize = 0;
@@ -709,7 +733,7 @@ public class LongQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items;
+    private T[]? items;
 
     private readonly long[] _rootNode;
 
@@ -798,7 +822,7 @@ public class LongQuadTree<T>
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
-        if (newElement == items.Length)
+        if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
@@ -855,7 +879,7 @@ public class LongQuadTree<T>
         leaves.Return();
         // Remove the element.
         _eleBounds.Erase(id);
-        items[id] = default;
+        items![id] = default!;
         _quadTreeIdSetter(element, -1);
     }
 
@@ -954,9 +978,9 @@ public class LongQuadTree<T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp![element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    listOut.Add(items[element]!);
+                    listOut.Add(items![element]);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
@@ -967,7 +991,7 @@ public class LongQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[listOut[j].QuadTreeId] = false;
+            _temp![listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -1017,11 +1041,11 @@ public class LongQuadTree<T>
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    _temp[element] = true;
+                    _temp![element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
@@ -1034,7 +1058,7 @@ public class LongQuadTree<T>
 
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.InternalCount; ++j)
-            _temp[intListOut.Get(j, 0)] = false;
+            _temp![intListOut.Get(j, 0)] = false;
 
         return intListOut;
     }
@@ -1076,7 +1100,7 @@ public class LongQuadTree<T>
                 element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                 }
@@ -1098,8 +1122,12 @@ public class LongQuadTree<T>
         _eleNodes.Clear();
         _nodes.Clear();
         _eleBounds.Clear();
-        Array.Clear(items, 0, items.Length);
 
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
         _nodes.Insert();
         _nodes.Set(0, _nodeIdxFc, -1);
         _nodes.Set(0, _nodeIdxNum, 0);
@@ -1246,11 +1274,30 @@ public class LongQuadTree<T>
             _nodes.Increment(node, _nodeIdxNum);
         }
     }
+
+    /// <summary>
+    /// Disposes the quad tree.
+    /// </summary>
+    public void Dispose()
+    {
+        if(items == null)
+            return;
+
+        _eleNodes?.Dispose();
+        _eleBounds?.Dispose();
+        _nodes?.Dispose();
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
+        items = null!;
+    }
 }
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class IntQuadTree<T>
+public class IntQuadTree<T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -1316,7 +1363,7 @@ public class IntQuadTree<T>
     // Data Members
     // ----------------------------------------------------------------------------------------
     // Temporary buffer used for queries.
-    private bool[] _temp;
+    private bool[]? _temp;
 
     // Stores the size of the temporary buffer.
     private int _tempSize = 0;
@@ -1328,7 +1375,7 @@ public class IntQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items;
+    private T[]? items;
 
     private readonly int[] _rootNode;
 
@@ -1417,7 +1464,7 @@ public class IntQuadTree<T>
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
-        if (newElement == items.Length)
+        if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
@@ -1474,7 +1521,7 @@ public class IntQuadTree<T>
         leaves.Return();
         // Remove the element.
         _eleBounds.Erase(id);
-        items[id] = default;
+        items![id] = default!;
         _quadTreeIdSetter(element, -1);
     }
 
@@ -1573,9 +1620,9 @@ public class IntQuadTree<T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp![element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    listOut.Add(items[element]!);
+                    listOut.Add(items![element]);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
@@ -1586,7 +1633,7 @@ public class IntQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[listOut[j].QuadTreeId] = false;
+            _temp![listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -1636,11 +1683,11 @@ public class IntQuadTree<T>
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    _temp[element] = true;
+                    _temp![element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
@@ -1653,7 +1700,7 @@ public class IntQuadTree<T>
 
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.InternalCount; ++j)
-            _temp[intListOut.Get(j, 0)] = false;
+            _temp![intListOut.Get(j, 0)] = false;
 
         return intListOut;
     }
@@ -1695,7 +1742,7 @@ public class IntQuadTree<T>
                 element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                 }
@@ -1717,8 +1764,12 @@ public class IntQuadTree<T>
         _eleNodes.Clear();
         _nodes.Clear();
         _eleBounds.Clear();
-        Array.Clear(items, 0, items.Length);
 
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
         _nodes.Insert();
         _nodes.Set(0, _nodeIdxFc, -1);
         _nodes.Set(0, _nodeIdxNum, 0);
@@ -1865,11 +1916,30 @@ public class IntQuadTree<T>
             _nodes.Increment(node, _nodeIdxNum);
         }
     }
+
+    /// <summary>
+    /// Disposes the quad tree.
+    /// </summary>
+    public void Dispose()
+    {
+        if(items == null)
+            return;
+
+        _eleNodes?.Dispose();
+        _eleBounds?.Dispose();
+        _nodes?.Dispose();
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
+        items = null!;
+    }
 }
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class DoubleQuadTree<T>
+public class DoubleQuadTree<T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -1935,7 +2005,7 @@ public class DoubleQuadTree<T>
     // Data Members
     // ----------------------------------------------------------------------------------------
     // Temporary buffer used for queries.
-    private bool[] _temp;
+    private bool[]? _temp;
 
     // Stores the size of the temporary buffer.
     private int _tempSize = 0;
@@ -1947,7 +2017,7 @@ public class DoubleQuadTree<T>
     // Stores the maximum depth allowed for the quadtree.
     private int _maxDepth;
 
-    private T?[] items;
+    private T[]? items;
 
     private readonly double[] _rootNode;
 
@@ -2036,7 +2106,7 @@ public class DoubleQuadTree<T>
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);  
                                                    
-        if (newElement == items.Length)
+        if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
@@ -2093,7 +2163,7 @@ public class DoubleQuadTree<T>
         leaves.Return();
         // Remove the element.
         _eleBounds.Erase(id);
-        items[id] = default;
+        items![id] = default!;
         _quadTreeIdSetter(element, -1);
     }
 
@@ -2192,9 +2262,9 @@ public class DoubleQuadTree<T>
             while (eltNodeIndex != -1)
             {
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
-                if (!_temp[element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
+                if (!_temp![element] && Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    listOut.Add(items[element]!);
+                    listOut.Add(items![element]);
                     _temp[element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
@@ -2205,7 +2275,7 @@ public class DoubleQuadTree<T>
         leaves.Return();
         // Unmark the elements that were inserted.
         for (int j = 0; j < listOut.Count; j++)
-            _temp[listOut[j].QuadTreeId] = false;
+            _temp![listOut[j].QuadTreeId] = false;
 
         return listOut;
     }
@@ -2255,11 +2325,11 @@ public class DoubleQuadTree<T>
                 int element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                     intListOut.Set(intListOut.PushBack(), 0, element);
-                    _temp[element] = true;
+                    _temp![element] = true;
                 }
                 eltNodeIndex = _eleNodes.Get(eltNodeIndex, _enodeIdxNext);
             }
@@ -2272,7 +2342,7 @@ public class DoubleQuadTree<T>
 
         // Unmark the elements that were inserted.
         for (int j = 0; j < intListOut.InternalCount; ++j)
-            _temp[intListOut.Get(j, 0)] = false;
+            _temp![intListOut.Get(j, 0)] = false;
 
         return intListOut;
     }
@@ -2314,7 +2384,7 @@ public class DoubleQuadTree<T>
                 element = _eleNodes.Get(eltNodeIndex, _enodeIdxElt);
                 if (Intersect(bounds, _eleBounds.Get(element, 0, 4)))
                 {
-                    cancel = !callback.Invoke(items[element]!);
+                    cancel = !callback.Invoke(items![element]);
                     if(cancel)
                         break;
                 }
@@ -2336,8 +2406,12 @@ public class DoubleQuadTree<T>
         _eleNodes.Clear();
         _nodes.Clear();
         _eleBounds.Clear();
-        Array.Clear(items, 0, items.Length);
 
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
         _nodes.Insert();
         _nodes.Set(0, _nodeIdxFc, -1);
         _nodes.Set(0, _nodeIdxNum, 0);
@@ -2483,5 +2557,24 @@ public class DoubleQuadTree<T>
             // Increment the leaf element count.
             _nodes.Increment(node, _nodeIdxNum);
         }
+    }
+
+    /// <summary>
+    /// Disposes the quad tree.
+    /// </summary>
+    public void Dispose()
+    {
+        if(items == null)
+            return;
+
+        _eleNodes?.Dispose();
+        _eleBounds?.Dispose();
+        _nodes?.Dispose();
+#if NET6_0_OR_GREATER
+        Array.Clear(items!);
+#else
+        Array.Clear(items!, 0, items.Length);
+#endif
+        items = null!;
     }
 }
