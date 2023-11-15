@@ -11,7 +11,7 @@ if ($ChangedFiles -gt 0)
 
 $projectFile = Get-ChildItem -filter "*.csproj"
 $version = Select-Xml -Path $projectFile -XPath "Project/PropertyGroup/Version" | Select-Object -ExpandProperty Node
-$tag = $projectFile.BaseName + "-v" + $version.InnerText
+$tag = "v" + $version.InnerText
 
 $confirmation = Read-Host "Tag current commit with '$tag' (y/n):"
 if ($confirmation -eq 'y') {
