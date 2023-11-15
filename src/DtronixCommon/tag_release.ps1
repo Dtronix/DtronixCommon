@@ -21,4 +21,5 @@ if ($confirmation -eq 'y') {
 $confirmation = Read-Host "Push new tag to origin? (y/n):"
 if ($confirmation -eq 'y') {
     git push origin $tag
+    git push origin
 }
