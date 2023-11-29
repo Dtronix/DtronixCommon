@@ -1,57 +1,16 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#" #>
-<#@ assembly name="System.Core" #>
-<#@ import namespace="System" #>
-<#@ import namespace="System.IO" #>
-<#@ output extension=".g.cs" #>
-<#
-	var configs = new Config[]
-	{
-		new Config()
-		{
-			ClassName = "FloatQuadTree",
-             MainListClass = "FloatList",
-             MainNumberType = "float",
-		},
-		new Config()
-		{
-			ClassName = "LongQuadTree",
-			MainListClass = "LongList",
-			MainNumberType = "long",
-		},
-		new Config()
-		{
-			ClassName = "IntQuadTree",
-			MainListClass = "IntList",
-			MainNumberType = "int",
-		},
-		new Config()
-		{
-			ClassName = "DoubleQuadTree",
-			MainListClass = "DoubleList",
-			MainNumberType = "double",
-		}
-	};
-#>
-#nullable enable
-// ----------------------------
-// This file is auto generated.
-// Any modifications to this file will be overridden
-// ----------------------------
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Reflection;
-using System.Reflection;
+using static DtronixCommon.Collections.Lists.DoubleStructList;
 
 namespace DtronixCommon.Collections.Trees;
-
-<#
-	foreach (var config in configs)
-	{
-#>
-/// <summary>
-/// Quadtree with 
-/// </summary>
-public class <#=config.ClassName#><T> : IDisposable
+public class DoubleQuadTree2<T> : IDisposable
     where T : IQuadTreeItem
 {
     // ----------------------------------------------------------------------------------------
@@ -80,7 +39,7 @@ public class <#=config.ClassName#><T> : IDisposable
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private readonly <#=config.MainListClass#> _eleBounds;
+    private readonly DoubleStructList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -90,14 +49,7 @@ public class <#=config.ClassName#><T> : IDisposable
     const int _nodeIdxFc = 0;
 
     // Stores the number of elements in the node or -1 if it is not a leaf.
-    const int _nodeIdxNum = 1;
-
-    /// <summary>
-    /// A static array of integers used as the default values for new child nodes in the quadtree. 
-    /// These values are used when a leaf node in the quadtree is full and needs to be split into four child nodes.
-    /// Each pair of -1 and 0 in the array represents the initial state of a child node, where -1 indicates that the node is empty and 0 indicates that the node has no elements.
-    /// </summary>
-    private static readonly int[] _defaultNode4Values = new[] { -1, 0, -1, 0, -1, 0, -1, 0, };
+    static int _nodeIdxNum = 1;
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
@@ -138,9 +90,9 @@ public class <#=config.ClassName#><T> : IDisposable
 
     private T[]? items;
 
-    private readonly <#=config.MainNumberType#>[] _rootNode;
+    private readonly DoubleStructList.ValType[] _rootNode;
 
-    private readonly <#=config.MainListClass#>.Cache _listCache = new <#=config.MainListClass#>.Cache(_ndNum);
+    private readonly DoubleStructList.Cache _listCache = new DoubleStructList.Cache(_ndNum);
 
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
@@ -160,14 +112,14 @@ public class <#=config.ClassName#><T> : IDisposable
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
     /// <param name="initialCapacity">Initial element capacity for the tree.</param>
-    public <#=config.ClassName#>(<#=config.MainNumberType#> width, <#=config.MainNumberType#> height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
+    public DoubleQuadTree2(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
-        
+
         _eleNodes = new IntList(2, 2 * initialCapacity);
         _nodes = new IntList(2, 2 * initialCapacity);
-        _eleBounds = new <#=config.MainListClass#>(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        _eleBounds = new DoubleStructList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
         items = new T[initialCapacity];
 
         // Insert the root node to the qt.
@@ -176,7 +128,7 @@ public class <#=config.ClassName#><T> : IDisposable
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootNode = new[]
+        _rootNode = new DoubleStructList.ValType[]
         {
             width / 2, // _ndIdxMx
             height / 2, // _ndIdxMy
@@ -187,10 +139,10 @@ public class <#=config.ClassName#><T> : IDisposable
         };
     }
 
-    static <#=config.ClassName#>()
+    static DoubleQuadTree2()
     {
         // Implemented interface.
-        var property = typeof(T).GetProperty("QuadTreeId", 
+        var property = typeof(T).GetProperty("QuadTreeId",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
 
         if (property == null)
@@ -202,7 +154,7 @@ public class <#=config.ClassName#><T> : IDisposable
 
         if (property == null)
             throw new Exception(
-                $"Type {typeof(T).FullName} does not contain a integer property named QuadTreeId as required.");
+                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
 
         _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
@@ -216,23 +168,23 @@ public class <#=config.ClassName#><T> : IDisposable
     /// <param name="y2">Max Y</param>
     /// <param name="element">Item to insert into the quad tree.</param>
     /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
-    public int Insert(<#=config.MainNumberType#> x1, <#=config.MainNumberType#> y1, <#=config.MainNumberType#> x2, <#=config.MainNumberType#> y2, T element)
+    public int Insert(double x1, double y1, double x2, double y2, T element)
     {
         if (element.QuadTreeId != -1)
             return -1;
 
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
         // Insert a new element.                   
-        var newElement = _eleBounds.Insert(bounds);  
-                                                   
+        var newElement = _eleBounds.Insert(bounds);
+
         if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
-        NodeInsert(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(element, newElement);
+        node_insert(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds, newElement);
+        _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -244,17 +196,20 @@ public class <#=config.ClassName#><T> : IDisposable
     {
         var id = element.QuadTreeId;
         // Find the leaves.
-        var leaves = FindLeaves(
-            new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode),
+        var leaves = find_leaves(
+            new ReadOnlySpan<DoubleStructList.ValType>(_rootNode),
             _eleBounds.Get(id, 0, 4));
+
+        int nodeIndex;
+        int ndIndex;
 
         // For each leaf node, remove the element node.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != id)
             {
@@ -303,7 +258,7 @@ public class <#=config.ClassName#><T> : IDisposable
             int node = (int)toProcess.Get(toProcess.InternalCount - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
-            toProcess.InternalCount--;
+            toProcess.PopBack();
 
             // Loop through the children.
             for (int j = 0; j < 4; ++j)
@@ -350,16 +305,16 @@ public class <#=config.ClassName#><T> : IDisposable
     /// <param name="y2">Max Y</param>
     /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2, 
-        <#=config.MainNumberType#> y2)
+        double x1,
+        double y1,
+        double x2,
+        double y2)
     {
         var listOut = new List<T>();
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -367,10 +322,12 @@ public class <#=config.ClassName#><T> : IDisposable
             _temp = new bool[_tempSize];
         }
 
+        int ndIndex;
+
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
@@ -406,18 +363,18 @@ public class <#=config.ClassName#><T> : IDisposable
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
-      public IntList Query(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2,
-        <#=config.MainNumberType#> y2,
-        Func<T, bool> callback)
+    public IntList Query(
+      double x1,
+      double y1,
+      double x2,
+      double y2,
+      Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -426,11 +383,11 @@ public class <#=config.ClassName#><T> : IDisposable
         }
 
         bool cancel = false;
-
+        int ndIndex;
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -461,7 +418,7 @@ public class <#=config.ClassName#><T> : IDisposable
         return intListOut;
     }
 
-         /// <summary>
+    /// <summary>
     /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
@@ -473,21 +430,22 @@ public class <#=config.ClassName#><T> : IDisposable
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2,
-        <#=config.MainNumberType#> y2,
+        double x1,
+        double y1,
+        double x2,
+        double y2,
         Func<T, bool> callback)
     {
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         bool cancel = false;
+        int ndIndex;
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -533,119 +491,70 @@ public class <#=config.ClassName#><T> : IDisposable
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        ReadOnlySpan<<#=config.MainNumberType#>> b1,
-        ReadOnlySpan<<#=config.MainNumberType#>> b2)
+        ReadOnlySpan<DoubleStructList.ValType> b1,
+        ReadOnlySpan<DoubleStructList.ValType> b2)
     {
-        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
-               && b2[_eltIdxRgt] >= b1[_eltIdxLft]
-               && b2[_eltIdxTop] <= b1[_eltIdxBtm]
-               && b2[_eltIdxBtm] >= b1[_eltIdxTop];
+        return b2[_eltIdxLft].Value <= b1[_eltIdxRgt].Value
+               && b2[_eltIdxRgt].Value >= b1[_eltIdxLft].Value
+               && b2[_eltIdxTop].Value <= b1[_eltIdxBtm].Value
+               && b2[_eltIdxBtm].Value >= b1[_eltIdxTop].Value;
     }
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void PushNode(<#=config.MainListClass#> nodes, int ndIndex, int ndDepth, <#=config.MainNumberType#> ndMx, <#=config.MainNumberType#> ndMy, <#=config.MainNumberType#> ndSx, <#=config.MainNumberType#> ndSy)
+    private static void PushNode(DoubleStructList nodes, int ndIndex, int ndDepth, double ndMx, double ndMy, double ndSx, double ndSy)
     {
-        nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
+        nodes.PushBack(stackalloc ValType[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-    private <#=config.MainListClass#>.Cache.Item FindLeaves(
-        ReadOnlySpan<<#=config.MainNumberType#>> data,
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds)
+    private DoubleStructList.Cache.Item find_leaves(
+        ReadOnlySpan<DoubleStructList.ValType> data,
+        ReadOnlySpan<DoubleStructList.ValType> bounds)
     {
         var leaves = _listCache.Get();
         var toProcess = _listCache.Get();
-        var toProcessList = toProcess.List;
-        var toProcessListData = toProcessList.Data!;
+        toProcess.List.PushBack(data);
 
-        toProcessList.PushBack(data);
-
-        while (toProcessList.InternalCount > 0)
+        while (toProcess.List.InternalCount > 0)
         {
-            int backIdx = toProcessList.InternalCount - 1;
-            int backOffset = backIdx * 6;
-            //var ndData = toProcessList.Get(backIdx, 0, 6);
-            //var ndIndex = (int)ndData[_ndIdxIndex];
-            //var ndDepth = (int)ndData[_ndIdxDepth];
-
-            var ndIndexOffset = (int)toProcessListData[backOffset + _ndIdxIndex] * 2;
-            var ndDepth = (int)toProcessListData[backOffset + _ndIdxDepth];
-            toProcessList.InternalCount--;
+            int backIdx = toProcess.List.InternalCount - 1;
+            ref var ndData = ref toProcess.List.Get2(backIdx, 0);
+            ;
+            var ndIndex = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxIndex).IntValue; //ndData[_ndIdxIndex].IntValue;
+            var ndDepth = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxDepth).IntValue; //ndData[_ndIdxDepth].IntValue;
+            toProcess.List.PopBack();
 
             // If this node is a leaf, insert it to the list.
-            
-            if (_nodes.Data![ndIndexOffset + _nodeIdxNum] != -1)
-            {
-                leaves.List.PushBack(toProcessList.Get(backIdx, 0, 6));
-            }
+            if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
+                leaves.List.PushBack(ref ndData, 7);
             else
             {
-                var mx = toProcessListData[backOffset + _ndIdxMx];
-                var my = toProcessListData[backOffset + _ndIdxMy];
                 // Otherwise push the children that intersect the rectangle.
-                int fc = _nodes.Data[ndIndexOffset + _nodeIdxFc]; //_nodes.Get(ndIndex, _nodeIdxFc);
-                var hx = toProcessListData[backOffset + _ndIdxSx] / 2;
-                var hy = toProcessListData[backOffset + _ndIdxSy] / 2;
-                var l = mx - hx;
-                var r = mx + hx;
+                int fc = _nodes.Get(ndIndex, _nodeIdxFc);
+                var yVal = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxMy).Value;
+                var xVal = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxMx).Value;
 
-                var offset = toProcessList.InternalCount;
-                toProcessList.EnsureSpaceAvailable(4);
+                var hx = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxSx).Value / 2; //ndData[_ndIdxSx].Value / 2;
+                var hy = Unsafe.AddByteOffset(ref ndData, (nint)8 * _ndIdxSy).Value / 2; //ndData[_ndIdxSy].Value / 2;
+                var l = xVal - hx; //ndData[_ndIdxMx].Value - hx;
+                var t = yVal - hx; //ndData[_ndIdxMy].Value - hx;
+                var r = xVal + hx; //ndData[_ndIdxMx].Value + hx;
+                var b = yVal + hy; //ndData[_ndIdxMy].Value + hy;
 
-                if (bounds[_eltIdxTop] <= my)
+                if (bounds[_eltIdxTop].Value <= yVal)
                 {
-                    var t = my - hx;
-                    if (bounds[_eltIdxLft] <= mx)
-                    {
-                        var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = l; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = t; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 0; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
-                        //toProcessList.PushBack(processItem);
-                        //toProcessList.PushBack(stackalloc[] { l, t, hx, hy, fc + 0, ndDepth + 1 });
-                    }
-
-                    if (bounds[_eltIdxRgt] > mx)
-                    {
-                        var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = r; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = t; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 1; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
-                    }
+                    if (bounds[_eltIdxLft].Value <= xVal)
+                        PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    if (bounds[_eltIdxRgt].Value > xVal)
+                        PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
                 }
 
-                if (bounds[_eltIdxBtm] > my)
+                if (bounds[_eltIdxBtm].Value > yVal)
                 {
-                    var b = my + hy;
-                    if (bounds[_eltIdxLft] <= mx)
-                    {
-                        var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = l; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = b; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 2; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
-                    }
-
-                    if (bounds[_eltIdxRgt] > mx)
-                    {
-                        var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = r; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = b; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 3; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
-                    }
+                    if (bounds[_eltIdxLft].Value <= xVal)
+                        PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    if (bounds[_eltIdxRgt].Value > xVal)
+                        PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
                 }
-
-                toProcessList.InternalCount = offset;
             }
         }
 
@@ -654,9 +563,9 @@ public class <#=config.ClassName#><T> : IDisposable
         return leaves;
     }
 
-    private void NodeInsert(ReadOnlySpan<<#=config.MainNumberType#>> data, ReadOnlySpan<<#=config.MainNumberType#>> elementBounds, int elementId)
+    private void node_insert(ReadOnlySpan<DoubleStructList.ValType> data, ReadOnlySpan<DoubleStructList.ValType> elementBounds, int elementId)
     {
-        var leaves = FindLeaves(data, elementBounds);
+        var leaves = find_leaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
             leaf_insert(elementId, leaves.List.Get(j, 0, 6));
@@ -664,10 +573,10 @@ public class <#=config.ClassName#><T> : IDisposable
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<<#=config.MainNumberType#>> data)
+    private void leaf_insert(int element, ReadOnlySpan<DoubleStructList.ValType> data)
     {
-        var node = (int)data[_ndIdxIndex];
-        var depth = (int)data[_ndIdxDepth];
+        var node = data[_ndIdxIndex].IntValue;
+        var depth = data[_ndIdxDepth].IntValue;
 
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
@@ -680,7 +589,7 @@ public class <#=config.ClassName#><T> : IDisposable
         if (_nodes.Get(node, _nodeIdxNum) == _maxElements && depth < _maxDepth)
         {
             // Transfer elements from the leaf node to a list of elements.
-            IntList elements = new IntList(1);
+            IntList elts = new IntList(1);
             while (_nodes.Get(node, _nodeIdxFc) != -1)
             {
                 int index = _nodes.Get(node, _nodeIdxFc);
@@ -692,19 +601,29 @@ public class <#=config.ClassName#><T> : IDisposable
                 _eleNodes.Erase(index);
 
                 // Insert element to the list.
-                elements.Set(elements.PushBack(), 0, elt);
+                elts.Set(elts.PushBack(), 0, elt);
             }
 
             // Start by allocating 4 child nodes.
-            int fc = _nodes.PushBackCount(_defaultNode4Values, 4);
+            int fc = _nodes.Insert();
+            _nodes.Insert();
+            _nodes.Insert();
+            _nodes.Insert();
             _nodes.Set(node, _nodeIdxFc, fc);
+
+            // Initialize the new child nodes.
+            for (int j = 0; j < 4; ++j)
+            {
+                _nodes.Set(fc + j, _nodeIdxFc, -1);
+                _nodes.Set(fc + j, _nodeIdxNum, 0);
+            }
 
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elements.InternalCount; ++j)
+            for (int j = 0; j < elts.InternalCount; ++j)
             {
-                var id = elements.GetInt(j, 0);
-                NodeInsert(data, _eleBounds.Get(id, 0, 4), id);
+                var id = elts.GetInt(j, 0);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
             }
         }
         else
@@ -719,7 +638,7 @@ public class <#=config.ClassName#><T> : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if(items == null)
+        if (items == null)
             return;
 
         _eleNodes?.Dispose();
@@ -733,16 +652,3 @@ public class <#=config.ClassName#><T> : IDisposable
         items = null!;
     }
 }
-<#
-	}
-#>
-<#+
-	private class Config
-	{
-		public string FileName { get; set; }
-		public string ClassName { get; set; }
-		public string MainListClass { get; set; }
-		public string MainNumberType { get; set; }
-	}
-
-#>

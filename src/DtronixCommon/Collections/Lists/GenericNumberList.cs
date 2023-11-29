@@ -1,56 +1,20 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#"#>
-<#@ assembly name="System.Core"#>
-<#@ import namespace="System"#>
-<#@ import namespace="System.IO"#>
-<#@ output extension=".g.cs" #>
-<#
-	var configs = new Config[]
-	{
-		new Config()
-		{
-			ClassName = "FloatList",
-			NumberType = "float",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "DoubleList",
-			NumberType = "double",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "IntList",
-			NumberType = "int",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "LongList",
-			NumberType = "long",
-			Visibility = "public"
-		}
-	};
-#>
-#nullable enable
-// ----------------------------
-// This file is auto generated.
-// Any modifications to this file will be overridden
-// ----------------------------
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DtronixCommon.Collections.Lists;
-
-<# 	foreach (var config in configs)
-	{ #>
-
 /// <summary>
-/// List of <#=config.NumberType#> with varying size with a backing array.  Items erased are returned to be reused.
+/// List of TNum with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-<#=config.Visibility#> class <#=config.ClassName#> : IDisposable
+public class GenericNumberList<TNum> : IDisposable
+    where TNum : unmanaged, INumber<TNum>
 {
     public class Cache
     {
@@ -60,10 +24,10 @@ namespace DtronixCommon.Collections.Lists;
         public class Item
         {
             public readonly long ExpireTime;
-            public readonly <#=config.ClassName#> List;
+            public readonly GenericNumberList<TNum> List;
             private readonly ConcurrentQueue<Item> _returnQueue;
 
-            public Item(<#=config.ClassName#> list, ConcurrentQueue<Item> queue)
+            public Item(GenericNumberList<TNum> list, ConcurrentQueue<Item> queue)
             {
                 List = list;
                 _returnQueue = queue;
@@ -86,7 +50,7 @@ namespace DtronixCommon.Collections.Lists;
         {
             if (!_cachedLists.TryDequeue(out var list))
             {
-                return new Item(new <#=config.ClassName#>(_fieldCount), _cachedLists);
+                return new Item(new GenericNumberList<TNum>(_fieldCount), _cachedLists);
             }
 
             return list;
@@ -96,7 +60,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <summary>
     /// Contains the data.
     /// </summary>
-    public <#=config.NumberType#>[]? Data;
+    public TNum[]? Data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -124,7 +88,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Capacity starts starts at 128.
     /// </summary>
     /// <param name="fieldCount">Number of fields </param>
-    public <#=config.ClassName#>(int fieldCount)
+    public GenericNumberList(int fieldCount)
         : this(fieldCount, 128)
     {
     }
@@ -135,10 +99,10 @@ namespace DtronixCommon.Collections.Lists;
     /// </summary>
     /// <param name="fieldCount"></param>
     /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
-    public <#=config.ClassName#>(int fieldCount, int capacity)
+    public GenericNumberList(int fieldCount, int capacity)
     {
         _numFields = fieldCount;
-        Data = new <#=config.NumberType#>[capacity];
+        Data = new TNum[capacity];
     }
 
     /// <summary>
@@ -148,7 +112,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public <#=config.NumberType#> Get(int index, int field)
+    public TNum Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         return Data![index * _numFields + field];
@@ -165,20 +129,9 @@ namespace DtronixCommon.Collections.Lists;
     /// of the max and min ranges for fields.</param>
     /// <returns>Span of data for the range</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ReadOnlySpan<<#=config.NumberType#>> Get(int index, int fieldStart, int fieldCount)
+    public ReadOnlySpan<TNum> Get(int index, int fieldStart, int fieldCount)
     {
-        return new ReadOnlySpan<<#=config.NumberType#>>(Data, index * _numFields + fieldStart, fieldCount);
-    }
-
-    /// <summary>
-    /// Returns an integer from the currently passed field.
-    /// </summary>
-    /// <param name="index">index of the element to retrieve</param>
-    /// <param name="field">Field of the element to retrieve.</param>
-    /// <returns>Interger of the specified element field.</returns>
-    public int GetInt(int index, int field)
-    {
-        return (int)Get(index, field);
+        return new ReadOnlySpan<TNum>(Data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -187,7 +140,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int index, int field, <#=config.NumberType#> value)
+    public void Set(int index, int field, TNum value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
         Data![index * _numFields + field] = value;
@@ -214,11 +167,11 @@ namespace DtronixCommon.Collections.Lists;
         // for the new element.
         if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
+            var newArray = new TNum[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
         }
@@ -230,7 +183,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBack(ReadOnlySpan<<#=config.NumberType#>> values)
+    public int PushBack(ReadOnlySpan<TNum> values)
     {
         int newPos = (InternalCount + 1) * _numFields;
 
@@ -238,11 +191,11 @@ namespace DtronixCommon.Collections.Lists;
         // for the new element.
         if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
+            var newArray = new TNum[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
         }
@@ -256,7 +209,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBackCount(ReadOnlySpan<<#=config.NumberType#>> values, int count)
+    public int PushBackCount(ReadOnlySpan<TNum> values, int count)
     {
         int newPos = (InternalCount + count) * _numFields;
 
@@ -264,11 +217,11 @@ namespace DtronixCommon.Collections.Lists;
         // for the new element.
         if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
+            var newArray = new TNum[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
         }
@@ -297,11 +250,11 @@ namespace DtronixCommon.Collections.Lists;
         // for the new element.
         if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
+            var newArray = new TNum[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
         }
@@ -342,8 +295,7 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)Data![pos];
-
+            _freeElement = int.CreateTruncating(Data![pos]);
             // Return the free index.
             return index;
         }
@@ -356,7 +308,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to a vacant position in the list and returns an index to it.
     /// </summary>
     /// <returns></returns>
-    public int Insert(ReadOnlySpan<<#=config.NumberType#>> values)
+    public int Insert(ReadOnlySpan<TNum> values)
     {
         // If there's a free index in the free list, pop that and use it.
         if (_freeElement != -1)
@@ -365,7 +317,7 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)Data![pos];
+            _freeElement = int.CreateTruncating(Data![pos]);
 
             // Return the free index.
             values.CopyTo(Data.AsSpan(index * _numFields));
@@ -384,7 +336,7 @@ namespace DtronixCommon.Collections.Lists;
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        Data![pos] = _freeElement;
+        Data![pos] = TNum.CreateTruncating(_freeElement);
         _freeElement = index;
     }
 
@@ -396,15 +348,3 @@ namespace DtronixCommon.Collections.Lists;
         Data = null;
     }
 }
-<#
-	}
-#>
-<#+
-	private class Config
-	{
-		public string ClassName { get; set; }
-		public string NumberType { get; set; }
-		public string Visibility { get; set; }
-	}
-
-#>

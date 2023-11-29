@@ -1,58 +1,21 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#" #>
-<#@ assembly name="System.Core" #>
-<#@ import namespace="System" #>
-<#@ import namespace="System.IO" #>
-<#@ output extension=".g.cs" #>
-<#
-	var configs = new Config[]
-	{
-		new Config()
-		{
-			ClassName = "FloatQuadTree",
-             MainListClass = "FloatList",
-             MainNumberType = "float",
-		},
-		new Config()
-		{
-			ClassName = "LongQuadTree",
-			MainListClass = "LongList",
-			MainNumberType = "long",
-		},
-		new Config()
-		{
-			ClassName = "IntQuadTree",
-			MainListClass = "IntList",
-			MainNumberType = "int",
-		},
-		new Config()
-		{
-			ClassName = "DoubleQuadTree",
-			MainListClass = "DoubleList",
-			MainNumberType = "double",
-		}
-	};
-#>
-#nullable enable
-// ----------------------------
-// This file is auto generated.
-// Any modifications to this file will be overridden
-// ----------------------------
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Reflection;
-using System.Reflection;
 
 namespace DtronixCommon.Collections.Trees;
-
-<#
-	foreach (var config in configs)
-	{
-#>
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class <#=config.ClassName#><T> : IDisposable
+public class DoubleQuadTree3<T> : IDisposable
     where T : IQuadTreeItem
+    
 {
     // ----------------------------------------------------------------------------------------
     // Element node fields:
@@ -80,7 +43,7 @@ public class <#=config.ClassName#><T> : IDisposable
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private readonly <#=config.MainListClass#> _eleBounds;
+    private readonly DoubleList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -138,9 +101,9 @@ public class <#=config.ClassName#><T> : IDisposable
 
     private T[]? items;
 
-    private readonly <#=config.MainNumberType#>[] _rootNode;
+    private readonly double[] _rootNode;
 
-    private readonly <#=config.MainListClass#>.Cache _listCache = new <#=config.MainListClass#>.Cache(_ndNum);
+    private readonly DoubleList.Cache _listCache = new DoubleList.Cache(_ndNum);
 
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
@@ -160,14 +123,14 @@ public class <#=config.ClassName#><T> : IDisposable
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
     /// <param name="initialCapacity">Initial element capacity for the tree.</param>
-    public <#=config.ClassName#>(<#=config.MainNumberType#> width, <#=config.MainNumberType#> height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
+    public DoubleQuadTree3(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
-        
+
         _eleNodes = new IntList(2, 2 * initialCapacity);
         _nodes = new IntList(2, 2 * initialCapacity);
-        _eleBounds = new <#=config.MainListClass#>(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        _eleBounds = new DoubleList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
         items = new T[initialCapacity];
 
         // Insert the root node to the qt.
@@ -187,10 +150,10 @@ public class <#=config.ClassName#><T> : IDisposable
         };
     }
 
-    static <#=config.ClassName#>()
+    static DoubleQuadTree3()
     {
         // Implemented interface.
-        var property = typeof(T).GetProperty("QuadTreeId", 
+        var property = typeof(T).GetProperty("QuadTreeId",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.FlattenHierarchy);
 
         if (property == null)
@@ -216,23 +179,23 @@ public class <#=config.ClassName#><T> : IDisposable
     /// <param name="y2">Max Y</param>
     /// <param name="element">Item to insert into the quad tree.</param>
     /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
-    public int Insert(<#=config.MainNumberType#> x1, <#=config.MainNumberType#> y1, <#=config.MainNumberType#> x2, <#=config.MainNumberType#> y2, T element)
+    public int Insert(double x1, double y1, double x2, double y2, T element)
     {
         if (element.QuadTreeId != -1)
             return -1;
 
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Insert a new element.                   
-        var newElement = _eleBounds.Insert(bounds);  
-                                                   
+        var newElement = _eleBounds.Insert(bounds);
+
         if (newElement == items!.Length)
             Array.Resize(ref items, items.Length * 2);
 
         items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
-        NodeInsert(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds, newElement);
-         _quadTreeIdSetter(element, newElement);
+        node_insert(new ReadOnlySpan<double>(_rootNode), bounds, newElement);
+        _quadTreeIdSetter(element, newElement);
         return newElement;
     }
 
@@ -244,8 +207,8 @@ public class <#=config.ClassName#><T> : IDisposable
     {
         var id = element.QuadTreeId;
         // Find the leaves.
-        var leaves = FindLeaves(
-            new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode),
+        var leaves = find_leaves(
+            new ReadOnlySpan<double>(_rootNode),
             _eleBounds.Get(id, 0, 4));
 
         // For each leaf node, remove the element node.
@@ -350,16 +313,16 @@ public class <#=config.ClassName#><T> : IDisposable
     /// <param name="y2">Max Y</param>
     /// <returns>List of items which intersect the bounds.</returns>
     public List<T> Query(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2, 
-        <#=config.MainNumberType#> y2)
+        double x1,
+        double y1,
+        double x2,
+        double y2)
     {
         var listOut = new List<T>();
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -406,18 +369,18 @@ public class <#=config.ClassName#><T> : IDisposable
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
-      public IntList Query(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2,
-        <#=config.MainNumberType#> y2,
-        Func<T, bool> callback)
+    public IntList Query(
+      double x1,
+      double y1,
+      double x2,
+      double y2,
+      Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -426,11 +389,11 @@ public class <#=config.ClassName#><T> : IDisposable
         }
 
         bool cancel = false;
-
+        int ndIndex;
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -461,7 +424,7 @@ public class <#=config.ClassName#><T> : IDisposable
         return intListOut;
     }
 
-         /// <summary>
+    /// <summary>
     /// Walks the specified bounds of the QuadTree and invokes the callback on each found element.
     /// </summary>
     /// <param name="x1">Min X</param>
@@ -473,21 +436,22 @@ public class <#=config.ClassName#><T> : IDisposable
     /// Return true to continue searching, false to stop.
     /// </param>
     public unsafe void Walk(
-        <#=config.MainNumberType#> x1,
-        <#=config.MainNumberType#> y1,
-        <#=config.MainNumberType#> x2,
-        <#=config.MainNumberType#> y2,
+        double x1,
+        double y1,
+        double x2,
+        double y2,
         Func<T, bool> callback)
     {
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = FindLeaves(new ReadOnlySpan<<#=config.MainNumberType#>>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
 
         bool cancel = false;
+        int ndIndex;
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -533,10 +497,10 @@ public class <#=config.ClassName#><T> : IDisposable
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        ReadOnlySpan<<#=config.MainNumberType#>> b1,
-        ReadOnlySpan<<#=config.MainNumberType#>> b2)
+        ReadOnlySpan<double> b1,
+        ReadOnlySpan<double> b2)
     {
-        return b2[_eltIdxLft] <= b1[_eltIdxRgt] 
+        return b2[_eltIdxLft] <= b1[_eltIdxRgt]
                && b2[_eltIdxRgt] >= b1[_eltIdxLft]
                && b2[_eltIdxTop] <= b1[_eltIdxBtm]
                && b2[_eltIdxBtm] >= b1[_eltIdxTop];
@@ -544,13 +508,14 @@ public class <#=config.ClassName#><T> : IDisposable
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void PushNode(<#=config.MainListClass#> nodes, int ndIndex, int ndDepth, <#=config.MainNumberType#> ndMx, <#=config.MainNumberType#> ndMy, <#=config.MainNumberType#> ndSx, <#=config.MainNumberType#> ndSy)
+    private static void PushNode(DoubleList nodes, double ndMx, double ndMy, double ndSx, double ndSy, int ndIndex,
+        int ndDepth)
     {
         nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-    private <#=config.MainListClass#>.Cache.Item FindLeaves(
-        ReadOnlySpan<<#=config.MainNumberType#>> data,
-        ReadOnlySpan<<#=config.MainNumberType#>> bounds)
+    private DoubleList.Cache.Item find_leaves(
+        ReadOnlySpan<double> data,
+        ReadOnlySpan<double> bounds)
     {
         var leaves = _listCache.Get();
         var toProcess = _listCache.Get();
@@ -654,9 +619,221 @@ public class <#=config.ClassName#><T> : IDisposable
         return leaves;
     }
 
-    private void NodeInsert(ReadOnlySpan<<#=config.MainNumberType#>> data, ReadOnlySpan<<#=config.MainNumberType#>> elementBounds, int elementId)
+
+    private DoubleList.Cache.Item find_leaves2(
+        ReadOnlySpan<double> data,
+        ReadOnlySpan<double> bounds)
     {
-        var leaves = FindLeaves(data, elementBounds);
+        var leaves = _listCache.Get();
+        var toProcess = _listCache.Get();
+        Span<double> processItem = stackalloc double[6];
+        toProcess.List.PushBack(data);
+
+        while (toProcess.List.InternalCount > 0)
+        {
+            int backIdx = toProcess.List.InternalCount - 1;
+            var ndData = toProcess.List.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcess.List.InternalCount--;
+
+            // If this node is a leaf, insert it to the list.
+            if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
+                leaves.List.PushBack(ndData);
+            else
+            {
+                var mx = ndData[_ndIdxMx];
+                var my = ndData[_ndIdxMy];
+                // Otherwise push the children that intersect the rectangle.
+                int fc = _nodes.Get(ndIndex, _nodeIdxFc);
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = mx - hx;
+                var r = mx + hx;
+
+                processItem[2] = hx; // ndSx
+                processItem[3] = hy; // ndSy
+                processItem[5] = ndDepth + 1; // ndDepth
+
+                if (bounds[_eltIdxTop] <= my)
+                {
+                    var t = my - hx;
+                    if (bounds[_eltIdxLft] <= mx)
+                    {
+                        processItem[0] = l; // ndMx
+                        processItem[1] = t; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 0; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcess.List.PushBack(processItem);
+                        // toProcess.List.PushBack(stackalloc[] { l, t, hx, hy, fc + 0, ndDepth + 1 });
+                        //PushNode(toProcess.List, fc + 0, ndDepth + 1, l, t, hx, hy);
+                    }
+
+                    if (bounds[_eltIdxRgt] > mx)
+                    {
+                        processItem[0] = r; // ndMx
+                        processItem[1] = t; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 1; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcess.List.PushBack(processItem);
+                        //toProcess.List.PushBack(stackalloc[] { r, t, hx, hy, fc + 1, ndDepth + 1 });
+                        //PushNode(toProcess.List, fc + 1, ndDepth + 1, r, t, hx, hy);
+                    }
+                }
+
+                if (bounds[_eltIdxBtm] > my)
+                {
+                    var b = my + hy;
+                    if (bounds[_eltIdxLft] <= mx)
+                    {
+                        processItem[0] = l; // ndMx
+                        processItem[1] = b; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 2; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcess.List.PushBack(processItem);
+                        //toProcess.List.PushBack(stackalloc[] { l, b, hx, hy, fc + 2, ndDepth + 1 });
+                        //PushNode(toProcess.List, fc + 2, ndDepth + 1, l, b, hx, hy);
+                    }
+
+                    if (bounds[_eltIdxRgt] > mx)
+                    {
+                        processItem[0] = r; // ndMx
+                        processItem[1] = b; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 3; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcess.List.PushBack(processItem);
+                        //toProcess.List.PushBack(stackalloc[] { r, b, hx, hy, fc + 3, ndDepth + 1 });
+                        //PushNode(toProcess.List, fc + 3, ndDepth + 1, r, b, hx, hy);
+                    }
+                }
+            }
+        }
+
+        toProcess.Return();
+
+        return leaves;
+    }
+
+    private DoubleList.Cache.Item find_leaves3(
+        ReadOnlySpan<double> data,
+        ReadOnlySpan<double> bounds)
+    {
+        var leaves = _listCache.Get();
+        var toProcess = _listCache.Get();
+        var toProcessList = toProcess.List;
+
+        toProcessList.PushBack(data);
+        Span<double> processItem = stackalloc double[6];
+
+        while (toProcessList.InternalCount > 0)
+        {
+            int backIdx = toProcessList.InternalCount - 1;
+            var ndData = toProcessList.Get(backIdx, 0, 6);
+
+            var ndIndex = (int)ndData[_ndIdxIndex];
+            var ndDepth = (int)ndData[_ndIdxDepth];
+            toProcessList.InternalCount--;
+
+            // If this node is a leaf, insert it to the list.
+            if (_nodes.Get(ndIndex, _nodeIdxNum) != -1)
+                leaves.List.PushBack(ndData);
+            else
+            {
+                var mx = ndData[_ndIdxMx];
+                var my = ndData[_ndIdxMy];
+                // Otherwise push the children that intersect the rectangle.
+                int fc = _nodes.Get(ndIndex, _nodeIdxFc);
+                var hx = ndData[_ndIdxSx] / 2;
+                var hy = ndData[_ndIdxSy] / 2;
+                var l = mx - hx;
+                var r = mx + hx;
+
+                processItem[2] = hx; // ndSx
+                processItem[3] = hy; // ndSy
+                processItem[5] = ndDepth + 1; // ndDepth
+
+                if (bounds[_eltIdxTop] <= my)
+                {
+                    var t = my - hx;
+                    if (bounds[_eltIdxLft] <= mx)
+                    {
+                        processItem[0] = l; // ndMx
+                        processItem[1] = t; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 0; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+                        toProcessList.PushBack(processItem);
+                        //toProcessList.PushBack(stackalloc[] { l, t, hx, hy, fc + 0, ndDepth + 1 });
+                    }
+
+                    if (bounds[_eltIdxRgt] > mx)
+                    {
+                        processItem[0] = r; // ndMx
+                        processItem[1] = t; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 1; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcessList.PushBack(processItem);
+                        //toProcessList.PushBack(stackalloc[] { r, t, hx, hy, fc + 1, ndDepth + 1 });
+                    }
+                }
+
+                if (bounds[_eltIdxBtm] > my)
+                {
+                    var b = my + hy;
+                    if (bounds[_eltIdxLft] <= mx)
+                    {
+                        processItem[0] = l; // ndMx
+                        processItem[1] = b; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 2; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcessList.PushBack(processItem);
+                        //toProcessList.PushBack(stackalloc[] { l, b, hx, hy, fc + 2, ndDepth + 1 });
+                    }
+
+                    if (bounds[_eltIdxRgt] > mx)
+                    {
+                        processItem[0] = r; // ndMx
+                        processItem[1] = b; // ndMy
+                        //processItem[2] = hx; // ndSx
+                        //processItem[3] = hy; // ndSy
+                        processItem[4] = fc + 3; // ndIndex
+                        //processItem[5] = ndDepth + 1; // ndDepth
+
+                        toProcessList.PushBack(processItem);
+                        //toProcessList.PushBack(stackalloc[] { r, b, hx, hy, fc + 3, ndDepth + 1 });
+                    }
+                }
+            }
+        }
+
+        toProcess.Return();
+
+        return leaves;
+    }
+
+    private void node_insert(ReadOnlySpan<double> data, ReadOnlySpan<double> elementBounds, int elementId)
+    {
+        var leaves = find_leaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
             leaf_insert(elementId, leaves.List.Get(j, 0, 6));
@@ -664,7 +841,7 @@ public class <#=config.ClassName#><T> : IDisposable
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<<#=config.MainNumberType#>> data)
+    private void leaf_insert(int element, ReadOnlySpan<double> data)
     {
         var node = (int)data[_ndIdxIndex];
         var depth = (int)data[_ndIdxDepth];
@@ -698,13 +875,13 @@ public class <#=config.ClassName#><T> : IDisposable
             // Start by allocating 4 child nodes.
             int fc = _nodes.PushBackCount(_defaultNode4Values, 4);
             _nodes.Set(node, _nodeIdxFc, fc);
-
+            
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
             for (int j = 0; j < elements.InternalCount; ++j)
             {
                 var id = elements.GetInt(j, 0);
-                NodeInsert(data, _eleBounds.Get(id, 0, 4), id);
+                node_insert(data, _eleBounds.Get(id, 0, 4), id);
             }
         }
         else
@@ -719,7 +896,7 @@ public class <#=config.ClassName#><T> : IDisposable
     /// </summary>
     public void Dispose()
     {
-        if(items == null)
+        if (items == null)
             return;
 
         _eleNodes?.Dispose();
@@ -733,16 +910,3 @@ public class <#=config.ClassName#><T> : IDisposable
         items = null!;
     }
 }
-<#
-	}
-#>
-<#+
-	private class Config
-	{
-		public string FileName { get; set; }
-		public string ClassName { get; set; }
-		public string MainListClass { get; set; }
-		public string MainNumberType { get; set; }
-	}
-
-#>

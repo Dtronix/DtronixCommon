@@ -1,57 +1,41 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#"#>
-<#@ assembly name="System.Core"#>
-<#@ import namespace="System"#>
-<#@ import namespace="System.IO"#>
-<#@ output extension=".g.cs" #>
-<#
-	var configs = new Config[]
-	{
-		new Config()
-		{
-			ClassName = "FloatList",
-			NumberType = "float",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "DoubleList",
-			NumberType = "double",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "IntList",
-			NumberType = "int",
-			Visibility = "public"
-		},
-		new Config()
-		{
-			ClassName = "LongList",
-			NumberType = "long",
-			Visibility = "public"
-		}
-	};
-#>
-#nullable enable
-// ----------------------------
-// This file is auto generated.
-// Any modifications to this file will be overridden
-// ----------------------------
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace DtronixCommon.Collections.Lists;
 
-<# 	foreach (var config in configs)
-	{ #>
-
 /// <summary>
-/// List of <#=config.NumberType#> with varying size with a backing array.  Items erased are returned to be reused.
+/// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-<#=config.Visibility#> class <#=config.ClassName#> : IDisposable
+public class DoubleStructList : IDisposable
 {
+    [StructLayout(LayoutKind.Explicit)]
+    public struct ValType
+    {
+        [FieldOffset(0)] // 1 byte
+        public double Value;
+        [FieldOffset(0)] // 4 bytes
+        public int IntValue;
+
+        public static implicit operator ValType(double d) => new ValType() { Value = d };
+        public static implicit operator ValType(int d) => new ValType() { IntValue = d };
+
+        public override string ToString()
+        {
+            return $"Value: {Value}; Int: {IntValue}";
+        }
+    }
+
+
     public class Cache
     {
         private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
@@ -60,10 +44,10 @@ namespace DtronixCommon.Collections.Lists;
         public class Item
         {
             public readonly long ExpireTime;
-            public readonly <#=config.ClassName#> List;
+            public readonly DoubleStructList List;
             private readonly ConcurrentQueue<Item> _returnQueue;
 
-            public Item(<#=config.ClassName#> list, ConcurrentQueue<Item> queue)
+            public Item(DoubleStructList list, ConcurrentQueue<Item> queue)
             {
                 List = list;
                 _returnQueue = queue;
@@ -86,7 +70,7 @@ namespace DtronixCommon.Collections.Lists;
         {
             if (!_cachedLists.TryDequeue(out var list))
             {
-                return new Item(new <#=config.ClassName#>(_fieldCount), _cachedLists);
+                return new Item(new DoubleStructList(_fieldCount), _cachedLists);
             }
 
             return list;
@@ -96,7 +80,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <summary>
     /// Contains the data.
     /// </summary>
-    public <#=config.NumberType#>[]? Data;
+    private ValType[]? _data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -124,7 +108,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Capacity starts starts at 128.
     /// </summary>
     /// <param name="fieldCount">Number of fields </param>
-    public <#=config.ClassName#>(int fieldCount)
+    public DoubleStructList(int fieldCount)
         : this(fieldCount, 128)
     {
     }
@@ -135,10 +119,10 @@ namespace DtronixCommon.Collections.Lists;
     /// </summary>
     /// <param name="fieldCount"></param>
     /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
-    public <#=config.ClassName#>(int fieldCount, int capacity)
+    public DoubleStructList(int fieldCount, int capacity)
     {
         _numFields = fieldCount;
-        Data = new <#=config.NumberType#>[capacity];
+        _data = new ValType[capacity];
     }
 
     /// <summary>
@@ -148,10 +132,10 @@ namespace DtronixCommon.Collections.Lists;
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public <#=config.NumberType#> Get(int index, int field)
+    public double Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return Data![index * _numFields + field];
+        return _data![index * _numFields + field].Value;
     }
 
     /// <summary>
@@ -165,9 +149,17 @@ namespace DtronixCommon.Collections.Lists;
     /// of the max and min ranges for fields.</param>
     /// <returns>Span of data for the range</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ReadOnlySpan<<#=config.NumberType#>> Get(int index, int fieldStart, int fieldCount)
+    public ReadOnlySpan<ValType> Get(int index, int fieldStart, int fieldCount)
     {
-        return new ReadOnlySpan<<#=config.NumberType#>>(Data, index * _numFields + fieldStart, fieldCount);
+        return new ReadOnlySpan<ValType>(_data, index * _numFields + fieldStart, fieldCount);
+
+       ref var type = ref Get2(index, fieldStart);
+
+    }
+
+    public ref ValType Get2(int index, int fieldStart)
+    {
+        return ref Unsafe.AddByteOffset(ref _data![0], new IntPtr((index * _numFields + fieldStart * 8)));
     }
 
     /// <summary>
@@ -178,7 +170,7 @@ namespace DtronixCommon.Collections.Lists;
     /// <returns>Interger of the specified element field.</returns>
     public int GetInt(int index, int field)
     {
-        return (int)Get(index, field);
+        return _data![index * _numFields + field].IntValue;
     }
 
     /// <summary>
@@ -187,10 +179,10 @@ namespace DtronixCommon.Collections.Lists;
     /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int index, int field, <#=config.NumberType#> value)
+    public void Set(int index, int field, double value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        Data![index * _numFields + field] = value;
+        _data![index * _numFields + field].Value = value;
     }
 
     /// <summary>
@@ -212,15 +204,15 @@ namespace DtronixCommon.Collections.Lists;
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > Data!.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
-            Array.Copy(Data, newArray, Data.Length);
-            Data = newArray;
+            var newArray = new ValType[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
         }
 
         return InternalCount++;
@@ -230,24 +222,23 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBack(ReadOnlySpan<<#=config.NumberType#>> values)
+    public int PushBack(ReadOnlySpan<ValType> values)
     {
         int newPos = (InternalCount + 1) * _numFields;
-
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > Data!.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
-            Array.Copy(Data, newArray, Data.Length);
-            Data = newArray;
+            var newArray = new ValType[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
         }
 
-        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
     }
@@ -256,55 +247,24 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBackCount(ReadOnlySpan<<#=config.NumberType#>> values, int count)
+    public int PushBack(scoped ref ValType values, int count)
     {
-        int newPos = (InternalCount + count) * _numFields;
-
+        int newPos = (InternalCount + 1) * _numFields;
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > Data!.Length)
+        if (newPos > _data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
-            Array.Copy(Data, newArray, Data.Length);
-            Data = newArray;
+            var newArray = new ValType[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
         }
+        MemoryMarshal.CreateSpan(ref values, count).CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
-
-        var id = InternalCount;
-        InternalCount += count;
-        return id;
-    }
-
-
-    /// <summary>
-    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
-    /// </summary>
-    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
-    /// <returns>The current count of elements in the list before the operation.</returns>
-    /// <remarks>
-    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
-    /// </remarks>
-    public void EnsureSpaceAvailable(int count)
-    {
-        int newPos = (InternalCount + count) * _numFields;
-
-        // If the list is full, we need to reallocate the buffer to make room
-        // for the new element.
-        if (newPos > Data!.Length)
-        {
-            // Use double the size for the new capacity.
-            int newCap = newPos * 2;
-
-            // Allocate new array and copy former contents.
-            var newArray = new <#=config.NumberType#>[newCap];
-            Array.Copy(Data, newArray, Data.Length);
-            Data = newArray;
-        }
+        return InternalCount++;
     }
 
     /// <summary>
@@ -320,13 +280,13 @@ namespace DtronixCommon.Collections.Lists;
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        Data![index * _numFields + field]++;
+        _data![index * _numFields + field].IntValue++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        Data![index * _numFields + field]--;
+        _data![index * _numFields + field].IntValue--;
     }
 
     /// <summary>
@@ -342,7 +302,7 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)Data![pos];
+            _freeElement = _data![pos].IntValue;
 
             // Return the free index.
             return index;
@@ -356,7 +316,7 @@ namespace DtronixCommon.Collections.Lists;
     /// Inserts an element to a vacant position in the list and returns an index to it.
     /// </summary>
     /// <returns></returns>
-    public int Insert(ReadOnlySpan<<#=config.NumberType#>> values)
+    public int Insert(ReadOnlySpan<ValType> values)
     {
         // If there's a free index in the free list, pop that and use it.
         if (_freeElement != -1)
@@ -365,10 +325,10 @@ namespace DtronixCommon.Collections.Lists;
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)Data![pos];
+            _freeElement = _data![pos].IntValue;
 
             // Return the free index.
-            values.CopyTo(Data.AsSpan(index * _numFields));
+            values.CopyTo(_data.AsSpan(index * _numFields));
             return index;
         }
 
@@ -384,7 +344,7 @@ namespace DtronixCommon.Collections.Lists;
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        Data![pos] = _freeElement;
+        _data![pos].IntValue = _freeElement;
         _freeElement = index;
     }
 
@@ -393,18 +353,6 @@ namespace DtronixCommon.Collections.Lists;
     /// </summary>
     public void Dispose()
     {
-        Data = null;
+        _data = null;
     }
 }
-<#
-	}
-#>
-<#+
-	private class Config
-	{
-		public string ClassName { get; set; }
-		public string NumberType { get; set; }
-		public string Visibility { get; set; }
-	}
-
-#>
