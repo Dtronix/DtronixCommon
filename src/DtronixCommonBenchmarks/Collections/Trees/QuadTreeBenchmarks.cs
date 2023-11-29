@@ -6,7 +6,6 @@ using DtronixCommon.Collections.Trees;
 namespace DtronixCommonBenchmarks.Collections.Trees;
 
 [MemoryDiagnoser]
-[Config(typeof(FastConfig))]
 public class QuadTreeBenchmarks
 {
 
