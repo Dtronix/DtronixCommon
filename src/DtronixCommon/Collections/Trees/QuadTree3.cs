@@ -55,7 +55,11 @@ public class DoubleQuadTree3<T> : IDisposable
     // Stores the number of elements in the node or -1 if it is not a leaf.
     const int _nodeIdxNum = 1;
 
-    // Stores the number of elements in the node or -1 if it is not a leaf.
+    /// <summary>
+    /// A static array of integers used as the default values for new child nodes in the quadtree. 
+    /// These values are used when a leaf node in the quadtree is full and needs to be split into four child nodes.
+    /// Each pair of -1 and 0 in the array represents the initial state of a child node, where -1 indicates that the node is empty and 0 indicates that the node has no elements.
+    /// </summary>
     private static readonly int[] _defaultNode4Values = new[] { -1, 0, -1, 0, -1, 0, -1, 0, };
 
     // Stores all the nodes in the quadtree. The first node in this
@@ -161,7 +165,7 @@ public class DoubleQuadTree3<T> : IDisposable
 
         if (property == null)
             throw new Exception(
-                $"Type {typeof(T).FullName} does not contain a interger property named QuadTreeId as required.");
+                $"Type {typeof(T).FullName} does not contain a integer property named QuadTreeId as required.");
 
         _quadTreeIdSetter = property.GetBackingField().CreateSetter<T, int>();
     }
@@ -207,16 +211,13 @@ public class DoubleQuadTree3<T> : IDisposable
             new ReadOnlySpan<double>(_rootNode),
             _eleBounds.Get(id, 0, 4));
 
-        int nodeIndex;
-        int ndIndex;
-
         // For each leaf node, remove the element node.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
-            nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
+            var nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             int prevIndex = -1;
             while (nodeIndex != -1 && _eleNodes.Get(nodeIndex, _enodeIdxElt) != id)
             {

@@ -150,7 +150,7 @@ public class QuadTreeBenchmarks
         _quadTreeD3.Clear();
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void InsertDoubleGeneric()
     {
 
@@ -190,7 +190,7 @@ public class QuadTreeBenchmarks
         _quadTreeD3Full.Walk(-5000, -5000, 5000, 5000, item => true);
     }
 
-    [Benchmark]
+    //[Benchmark]
     public void WalkGeneric()
     {
         _quadTreeGFull.Walk(-5000, -5000, 5000, 5000, item => true);
