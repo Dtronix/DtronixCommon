@@ -16,17 +16,23 @@ namespace DtronixCommon.Collections.Lists;
 /// List of double with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-internal class DoubleList2 : IDisposable
+public class DoubleList2 : IDisposable
 {
     [StructLayout(LayoutKind.Explicit)]
     public struct ValType
     {
         [FieldOffset(0)] // 1 byte
-        internal double Value;
+        public double Value;
         [FieldOffset(0)] // 4 bytes
-        internal int IntValue;
+        public int IntValue;
 
         public static implicit operator ValType(double d) => new ValType() { Value = d };
+        public static implicit operator ValType(int d) => new ValType() { IntValue = d };
+
+        public override string ToString()
+        {
+            return $"Value: {Value}; Int: {IntValue}";
+        }
     }
 
 
@@ -164,7 +170,7 @@ internal class DoubleList2 : IDisposable
     /// <returns>Interger of the specified element field.</returns>
     public int GetInt(int index, int field)
     {
-        return (int)Get(index, field);
+        return _data![index * _numFields + field].IntValue;
     }
 
     /// <summary>
@@ -219,7 +225,6 @@ internal class DoubleList2 : IDisposable
     public int PushBack(ReadOnlySpan<ValType> values)
     {
         int newPos = (InternalCount + 1) * _numFields;
-
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
         if (newPos > _data!.Length)
@@ -234,6 +239,30 @@ internal class DoubleList2 : IDisposable
         }
 
         values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+
+        return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBack(scoped ref ValType values, int count)
+    {
+        int newPos = (InternalCount + 1) * _numFields;
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > _data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new ValType[newCap];
+            Array.Copy(_data, newArray, _data.Length);
+            _data = newArray;
+        }
+        MemoryMarshal.CreateSpan(ref values, count).CopyTo(_data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
     }
