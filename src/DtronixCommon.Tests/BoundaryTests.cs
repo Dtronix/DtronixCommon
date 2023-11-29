@@ -10,13 +10,13 @@ public class BoundaryTests
     [Test]
     public void OneDimensionalBoundaryIsNotEmpty()
     {
-        Assert.IsFalse(new BoundaryF(0, -1, 0, 1).IsEmpty);
-        Assert.IsFalse(new BoundaryF(-1, 0, 1, 0).IsEmpty);
+        Assert.That(new BoundaryF(0, -1, 0, 1).IsEmpty, Is.False);
+        Assert.That(new BoundaryF(-1, 0, 1, 0).IsEmpty, Is.False);
     }
 
     [Test]
     public void CanUnionBoundariesWithOneDimension()
     {
-        Assert.AreEqual(new BoundaryF(-1, -1, 1, 1), new BoundaryF(0, -1, 0, 1).Union(new BoundaryF(-1, 0, 1, 0)));
+        Assert.That(new BoundaryF(0, -1, 0, 1).Union(new BoundaryF(-1, 0, 1, 0)), Is.EqualTo(new BoundaryF(-1, -1, 1, 1)));
     }
 }

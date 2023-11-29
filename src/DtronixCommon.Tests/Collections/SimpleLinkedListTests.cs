@@ -16,13 +16,13 @@ public class SimpleLinkedListTests
             nodes[i] = linkedList.AddLast(i);
 
 
-        Assert.AreEqual(5, linkedList.Count);
-        Assert.AreEqual(nodes.Last(), linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(5));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes.Last()));
 
         linkedList.BreakAtNode(nodes[2], true);
 
-        Assert.AreEqual(2, linkedList.Count);
-        Assert.AreEqual(nodes[1], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(2));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[1]));
     }
 
     [Test]
@@ -33,13 +33,13 @@ public class SimpleLinkedListTests
         for (int i = 0; i < nodes.Length; i++)
             nodes[i] = linkedList.AddLast(i);
 
-        Assert.AreEqual(5, linkedList.Count);
-        Assert.AreEqual(nodes.Last(), linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(5));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes.Last()));
 
         linkedList.BreakAtNode(nodes[2], false);
 
-        Assert.AreEqual(2, linkedList.Count);
-        Assert.AreEqual(nodes[3], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(2));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[3]));
     }
 
 
@@ -53,9 +53,9 @@ public class SimpleLinkedListTests
 
         linkedList.BreakAtNode(nodes[0], false);
 
-        Assert.AreEqual(4, linkedList.Count);
-        Assert.AreEqual(nodes[1], linkedList.First);
-        Assert.AreEqual(nodes[4], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(4));
+        Assert.That(linkedList.First, Is.EqualTo(nodes[1]));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[4]));
     }
 
     [Test]
@@ -68,9 +68,9 @@ public class SimpleLinkedListTests
 
         linkedList.BreakAtNode(nodes[4], true);
 
-        Assert.AreEqual(4, linkedList.Count);
-        Assert.AreEqual(nodes[0], linkedList.First);
-        Assert.AreEqual(nodes[3], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(4));
+        Assert.That(linkedList.First, Is.EqualTo(nodes[0]));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[3]));
     }
 
     [Test]
@@ -83,9 +83,9 @@ public class SimpleLinkedListTests
 
         linkedList.BreakAtNode(nodes[1], true);
 
-        Assert.AreEqual(1, linkedList.Count);
-        Assert.AreEqual(nodes[0], linkedList.First);
-        Assert.AreEqual(nodes[0], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(1));
+        Assert.That(linkedList.First, Is.EqualTo(nodes[0]));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[0]));
     }
     [Test]
     public void BreakThreeItemNodeListBefore()
@@ -97,8 +97,8 @@ public class SimpleLinkedListTests
 
         linkedList.BreakAtNode(nodes[1], false);
 
-        Assert.AreEqual(1, linkedList.Count);
-        Assert.AreEqual(nodes[2], linkedList.First);
-        Assert.AreEqual(nodes[2], linkedList.Last);
+        Assert.That(linkedList.Count, Is.EqualTo(1));
+        Assert.That(linkedList.First, Is.EqualTo(nodes[2]));
+        Assert.That(linkedList.Last, Is.EqualTo(nodes[2]));
     }
 }
