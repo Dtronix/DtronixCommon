@@ -1,4 +1,4 @@
-﻿#nullable enable
+#nullable enable
 // ----------------------------
 // This file is auto generated.
 // Any modifications to this file will be overridden
@@ -214,6 +214,61 @@ public class FloatList : IDisposable
         values.CopyTo(Data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBackCount(ReadOnlySpan<float> values, int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new float[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+
+        var id = InternalCount;
+        InternalCount += count;
+        return id;
+    }
+
+
+    /// <summary>
+    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
+    /// </summary>
+    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
+    /// <returns>The current count of elements in the list before the operation.</returns>
+    /// <remarks>
+    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
+    /// </remarks>
+    public void EnsureSpaceAvailable(int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new float[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
     }
 
     /// <summary>
@@ -512,6 +567,60 @@ public class DoubleList : IDisposable
         return InternalCount++;
     }
 
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBackCount(ReadOnlySpan<double> values, int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new double[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+
+        var id = InternalCount;
+        InternalCount += count;
+        return id;
+    }
+
+
+    /// <summary>
+    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
+    /// </summary>
+    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
+    /// <returns>The current count of elements in the list before the operation.</returns>
+    /// <remarks>
+    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
+    /// </remarks>
+    public void EnsureSpaceAvailable(int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new double[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+    }
 
     /// <summary>
     /// Removes the element at the back of the list.
@@ -810,6 +919,61 @@ public class IntList : IDisposable
     }
 
     /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBackCount(ReadOnlySpan<int> values, int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new int[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+
+        var id = InternalCount;
+        InternalCount += count;
+        return id;
+    }
+
+
+    /// <summary>
+    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
+    /// </summary>
+    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
+    /// <returns>The current count of elements in the list before the operation.</returns>
+    /// <remarks>
+    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
+    /// </remarks>
+    public void EnsureSpaceAvailable(int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new int[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+    }
+
+    /// <summary>
     /// Removes the element at the back of the list.
     /// </summary>
     public void PopBack()
@@ -1103,6 +1267,61 @@ public class LongList : IDisposable
         values.CopyTo(Data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
+    }
+
+    /// <summary>
+    /// Inserts an element to the back of the list and adds the passed values to the data.
+    /// </summary>
+    /// <returns></returns>
+    public int PushBackCount(ReadOnlySpan<long> values, int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new long[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
+
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+
+        var id = InternalCount;
+        InternalCount += count;
+        return id;
+    }
+
+
+    /// <summary>
+    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
+    /// </summary>
+    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
+    /// <returns>The current count of elements in the list before the operation.</returns>
+    /// <remarks>
+    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
+    /// </remarks>
+    public void EnsureSpaceAvailable(int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use double the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new long[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
     }
 
     /// <summary>

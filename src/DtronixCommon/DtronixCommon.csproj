@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>net5.0;net6.0;net7.0</TargetFrameworks>
+		<TargetFrameworks>net7.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Version>0.8.0.0</Version>
 		<Nullable>enable</Nullable>
@@ -25,6 +25,18 @@
 	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
 		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
 	</PropertyGroup>
+  <ItemGroup>
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+		<PackageReference Include="Mono.TextTemplating" Version="2.3.1" PrivateAssets="All" />
+		<TextTemplate Include="**\*.tt" />
+		<Generated Include="**\*.g.cs" />
+	</ItemGroup>
+	<Target Name="TextTemplateTransform" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+		<Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 %(TextTemplate.Identity)" />
+	</Target>
+	<Target Name="TextTemplateClean" AfterTargets="Clean">
+		<Delete Files="@(Generated)" />
+	</Target>
   <ItemGroup>
 		<None Include="icon.png">
 			<Pack>True</Pack>

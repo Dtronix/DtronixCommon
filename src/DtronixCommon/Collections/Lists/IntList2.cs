@@ -58,7 +58,7 @@ public class IntList2 : IDisposable
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private int[]? _data;
+    internal int[]? Data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -100,7 +100,7 @@ public class IntList2 : IDisposable
     public IntList2(int fieldCount, int capacity)
     {
         _numFields = fieldCount;
-        _data = new int[capacity];
+        Data = new int[capacity];
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class IntList2 : IDisposable
     public int Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data![index * _numFields + field];
+        return Data![index * _numFields + field];
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public class IntList2 : IDisposable
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ReadOnlySpan<int> Get(int index, int fieldStart, int fieldCount)
     {
-        return new ReadOnlySpan<int>(_data, index * _numFields + fieldStart, fieldCount);
+        return new ReadOnlySpan<int>(Data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -152,7 +152,7 @@ public class IntList2 : IDisposable
     public void Set(int index, int field, int value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field] = value;
+        Data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -174,15 +174,15 @@ public class IntList2 : IDisposable
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             var newArray = new int[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
 
         return InternalCount++;
@@ -198,18 +198,18 @@ public class IntList2 : IDisposable
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             var newArray = new int[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
     }
@@ -224,18 +224,18 @@ public class IntList2 : IDisposable
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
             // Use double the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
             var newArray = new int[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
 
         var id = InternalCount;
         InternalCount += count;
@@ -255,13 +255,13 @@ public class IntList2 : IDisposable
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field]++;
+        Data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field]--;
+        Data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -277,7 +277,7 @@ public class IntList2 : IDisposable
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data![pos];
+            _freeElement = (int)Data![pos];
 
             // Return the free index.
             return index;
@@ -300,10 +300,10 @@ public class IntList2 : IDisposable
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = (int)_data![pos];
+            _freeElement = (int)Data![pos];
 
             // Return the free index.
-            values.CopyTo(_data.AsSpan(index * _numFields));
+            values.CopyTo(Data.AsSpan(index * _numFields));
             return index;
         }
 
@@ -319,7 +319,7 @@ public class IntList2 : IDisposable
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data![pos] = _freeElement;
+        Data![pos] = _freeElement;
         _freeElement = index;
     }
 
@@ -328,6 +328,6 @@ public class IntList2 : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _data = null;
+        Data = null;
     }
 }

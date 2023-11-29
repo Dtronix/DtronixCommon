@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -8,14 +9,17 @@ using System.Text;
 using System.Threading.Tasks;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Reflection;
+using global::DtronixCommon.Collections.Lists;
+using global::DtronixCommon.Reflection;
 
 namespace DtronixCommon.Collections.Trees;
 /// <summary>
 /// Quadtree with 
 /// </summary>
-public class DoubleQuadTree3<T> : IDisposable
+public class QuadTreeGeneric<TNum, T> : IDisposable
     where T : IQuadTreeItem
-    
+    where TNum : unmanaged, INumber<TNum>
+
 {
     // ----------------------------------------------------------------------------------------
     // Element node fields:
@@ -28,7 +32,7 @@ public class DoubleQuadTree3<T> : IDisposable
     const int _enodeIdxElt = 1;
 
     // Stores all the element nodes in the quadtree.
-    private readonly IntList _eleNodes;
+    private readonly GenericNumberList<int> _eleNodes;
 
     // ----------------------------------------------------------------------------------------
     // Element fields:
@@ -43,7 +47,7 @@ public class DoubleQuadTree3<T> : IDisposable
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private readonly DoubleList _eleBounds;
+    private readonly GenericNumberList<TNum> _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -60,7 +64,7 @@ public class DoubleQuadTree3<T> : IDisposable
 
     // Stores all the nodes in the quadtree. The first node in this
     // sequence is always the root.
-    private readonly IntList _nodes;
+    private readonly GenericNumberList<int> _nodes;
 
     // ----------------------------------------------------------------------------------------
     // Node data fields:
@@ -97,9 +101,12 @@ public class DoubleQuadTree3<T> : IDisposable
 
     private T[]? items;
 
-    private readonly double[] _rootNode;
+    private static readonly TNum _numberZero = TNum.CreateChecked(0);
+    private static readonly TNum _numberTwo = TNum.CreateChecked(2);
 
-    private readonly DoubleList.Cache _listCache = new DoubleList.Cache(_ndNum);
+    private readonly TNum[] _rootNode;
+
+    private readonly GenericNumberList<TNum>.Cache _listCache = new GenericNumberList<TNum>.Cache(_ndNum);
 
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
@@ -119,14 +126,14 @@ public class DoubleQuadTree3<T> : IDisposable
     /// </param>
     /// <param name="startMaxDepth">Maximum depth allowed for the quadtree.</param>
     /// <param name="initialCapacity">Initial element capacity for the tree.</param>
-    public DoubleQuadTree3(double width, double height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
+    public QuadTreeGeneric(TNum width, TNum height, int startMaxElements, int startMaxDepth, int initialCapacity = 128)
     {
         _maxElements = startMaxElements;
         _maxDepth = startMaxDepth;
 
-        _eleNodes = new IntList(2, 2 * initialCapacity);
-        _nodes = new IntList(2, 2 * initialCapacity);
-        _eleBounds = new DoubleList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        _eleNodes = new GenericNumberList<int>(2, 2 * initialCapacity);
+        _nodes = new GenericNumberList<int>(2, 2 * initialCapacity);
+        _eleBounds = new GenericNumberList<TNum>(_eleBoundsItems, _eleBoundsItems * initialCapacity);
         items = new T[initialCapacity];
 
         // Insert the root node to the qt.
@@ -135,18 +142,18 @@ public class DoubleQuadTree3<T> : IDisposable
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootNode = new[]
+        _rootNode = new TNum[]
         {
-            width / 2, // _ndIdxMx
-            height / 2, // _ndIdxMy
-            width / 2, // _ndIdxSx
-            height / 2, // _ndIdxSy
-            0, // _ndIdxIndex
-            0 // _ndIdxDepth
+            width / _numberTwo, // _ndIdxMx
+            height / _numberTwo, // _ndIdxMy
+            width / _numberTwo, // _ndIdxSx
+            height / _numberTwo, // _ndIdxSy
+            _numberZero, // _ndIdxIndex
+            _numberZero // _ndIdxDepth
         };
     }
 
-    static DoubleQuadTree3()
+    static QuadTreeGeneric()
     {
         // Implemented interface.
         var property = typeof(T).GetProperty("QuadTreeId",
@@ -175,12 +182,12 @@ public class DoubleQuadTree3<T> : IDisposable
     /// <param name="y2">Max Y</param>
     /// <param name="element">Item to insert into the quad tree.</param>
     /// <returns>Index of the new element. -1 if the element exists in the quad tree.</returns>
-    public int Insert(double x1, double y1, double x2, double y2, T element)
+    public int Insert(TNum x1, TNum y1, TNum x2, TNum y2, T element)
     {
         if (element.QuadTreeId != -1)
             return -1;
 
-        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<TNum> bounds = stackalloc [] { x1, y1, x2, y2 };
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);
 
@@ -190,7 +197,7 @@ public class DoubleQuadTree3<T> : IDisposable
         items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(new ReadOnlySpan<double>(_rootNode), bounds, newElement);
+        node_insert(new ReadOnlySpan<TNum>(_rootNode), bounds, newElement);
         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
@@ -204,7 +211,7 @@ public class DoubleQuadTree3<T> : IDisposable
         var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
-            new ReadOnlySpan<double>(_rootNode),
+            new ReadOnlySpan<TNum>(_rootNode),
             _eleBounds.Get(id, 0, 4));
 
         int nodeIndex;
@@ -213,7 +220,8 @@ public class DoubleQuadTree3<T> : IDisposable
         // For each leaf node, remove the element node.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = int.CreateTruncating(leaves.List.Data![j * 6 + _ndIdxIndex]);
+            //ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list until we find the element node.
             nodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -262,7 +270,7 @@ public class DoubleQuadTree3<T> : IDisposable
         while (toProcess.InternalCount > 0)
         {
             // Pop a node from the stack.
-            int node = (int)toProcess.Get(toProcess.InternalCount - 1, 0);
+            int node = toProcess.Get(toProcess.InternalCount - 1, 0);
             int fc = _nodes.Get(node, _nodeIdxFc);
             int numEmptyLeaves = 0;
             toProcess.InternalCount--;
@@ -311,17 +319,13 @@ public class DoubleQuadTree3<T> : IDisposable
     /// <param name="x2">Max X</param>
     /// <param name="y2">Max Y</param>
     /// <returns>List of items which intersect the bounds.</returns>
-    public List<T> Query(
-        double x1,
-        double y1,
-        double x2,
-        double y2)
+    public List<T> Query(TNum x1, TNum y1, TNum x2, TNum y2)
     {
         var listOut = new List<T>();
-        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<TNum> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<TNum>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -329,10 +333,13 @@ public class DoubleQuadTree3<T> : IDisposable
             _temp = new bool[_tempSize];
         }
 
+        int ndIndex;
+
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            var ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = int.CreateTruncating(leaves.List.Data![j * 6 + _ndIdxIndex]);
+            //ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
             while (eltNodeIndex != -1)
@@ -368,18 +375,13 @@ public class DoubleQuadTree3<T> : IDisposable
     /// Return true to continue searching, false to stop.
     /// </param>
     /// <returns>List of items which intersect the bounds.</returns>
-    public IntList Query(
-      double x1,
-      double y1,
-      double x2,
-      double y2,
-      Func<T, bool> callback)
+    public GenericNumberList<int> Query(TNum x1, TNum y1, TNum x2, TNum y2, Func<T, bool> callback)
     {
-        var intListOut = new IntList(1);
-        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+        var intListOut = new GenericNumberList<int>(1);
+        ReadOnlySpan<TNum> bounds = stackalloc[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<TNum>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -392,7 +394,8 @@ public class DoubleQuadTree3<T> : IDisposable
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = int.CreateTruncating(leaves.List.Data![j * 6 + _ndIdxIndex]);
+            //ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -434,23 +437,18 @@ public class DoubleQuadTree3<T> : IDisposable
     /// Callback which is invoked on each found element.
     /// Return true to continue searching, false to stop.
     /// </param>
-    public unsafe void Walk(
-        double x1,
-        double y1,
-        double x2,
-        double y2,
-        Func<T, bool> callback)
+    public unsafe void Walk(TNum x1, TNum y1, TNum x2, TNum y2, Func<T, bool> callback)
     {
-        ReadOnlySpan<double> bounds = stackalloc[] { x1, y1, x2, y2 };
+        ReadOnlySpan<TNum> bounds = stackalloc[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<double>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<TNum>(_rootNode), bounds);
 
         bool cancel = false;
         int ndIndex;
         // For each leaf node, look for elements that intersect.
         for (int j = 0; j < leaves.List.InternalCount; ++j)
         {
-            ndIndex = leaves.List.GetInt(j, _ndIdxIndex);
+            ndIndex = (int)(object)leaves.List.Data![j * 6 + _ndIdxIndex];
 
             // Walk the list and add elements that intersect.
             int eltNodeIndex = _nodes.Get(ndIndex, _nodeIdxFc);
@@ -496,8 +494,8 @@ public class DoubleQuadTree3<T> : IDisposable
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        ReadOnlySpan<double> b1,
-        ReadOnlySpan<double> b2)
+        ReadOnlySpan<TNum> b1,
+        ReadOnlySpan<TNum> b2)
     {
         return b2[_eltIdxLft] <= b1[_eltIdxRgt]
                && b2[_eltIdxRgt] >= b1[_eltIdxLft]
@@ -505,21 +503,20 @@ public class DoubleQuadTree3<T> : IDisposable
                && b2[_eltIdxBtm] >= b1[_eltIdxTop];
     }
 
-
+    /*
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void PushNode(DoubleList nodes, double ndMx, double ndMy, double ndSx, double ndSy, int ndIndex,
         int ndDepth)
     {
         nodes.PushBack(stackalloc[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
-    }
-    private DoubleList.Cache.Item find_leaves(
-        ReadOnlySpan<double> data,
-        ReadOnlySpan<double> bounds)
+    }*/
+    private GenericNumberList<TNum>.Cache.Item find_leaves(
+        ReadOnlySpan<TNum> data,
+        ReadOnlySpan<TNum> bounds)
     {
         var leaves = _listCache.Get();
         var toProcess = _listCache.Get();
         var toProcessList = toProcess.List;
-        var toProcessListData = toProcessList.Data!;
 
         toProcessList.PushBack(data);
 
@@ -531,24 +528,24 @@ public class DoubleQuadTree3<T> : IDisposable
             //var ndIndex = (int)ndData[_ndIdxIndex];
             //var ndDepth = (int)ndData[_ndIdxDepth];
 
-            var ndIndexOffset = (int)toProcessListData[backOffset + _ndIdxIndex] * 2;
-            var ndDepth = (int)toProcessListData[backOffset + _ndIdxDepth];
+            var ndIndexOffset = int.CreateTruncating(toProcessList.Data![backOffset + _ndIdxIndex]) * 2;
+            var ndDepth = int.CreateTruncating(toProcessList.Data![backOffset + _ndIdxDepth]);
             toProcessList.InternalCount--;
 
             // If this node is a leaf, insert it to the list.
-            
+
             if (_nodes.Data![ndIndexOffset + _nodeIdxNum] != -1)
             {
                 leaves.List.PushBack(toProcessList.Get(backIdx, 0, 6));
             }
             else
             {
-                var mx = toProcessListData[backOffset + _ndIdxMx];
-                var my = toProcessListData[backOffset + _ndIdxMy];
+                var mx = toProcessList.Data![backOffset + _ndIdxMx];
+                var my = toProcessList.Data![backOffset + _ndIdxMy];
                 // Otherwise push the children that intersect the rectangle.
-                int fc = _nodes.Data[ndIndexOffset + _nodeIdxFc]; //_nodes.Get(ndIndex, _nodeIdxFc);
-                var hx = toProcessListData[backOffset + _ndIdxSx] / 2;
-                var hy = toProcessListData[backOffset + _ndIdxSy] / 2;
+                var fc = _nodes.Data[ndIndexOffset + _nodeIdxFc]; //_nodes.Get(ndIndex, _nodeIdxFc);
+                var hx = toProcessList.Data![backOffset + _ndIdxSx] / _numberTwo;
+                var hy = toProcessList.Data![backOffset + _ndIdxSy] / _numberTwo;
                 var l = mx - hx;
                 var r = mx + hx;
 
@@ -561,12 +558,12 @@ public class DoubleQuadTree3<T> : IDisposable
                     if (bounds[_eltIdxLft] <= mx)
                     {
                         var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = l; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = t; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 0; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
+                        toProcessList.Data![thisOffset + _ndIdxMx] = l; // ndMx
+                        toProcessList.Data![thisOffset + _ndIdxMy] = t; // ndMy
+                        toProcessList.Data![thisOffset + _ndIdxSx] = hx; // ndSx
+                        toProcessList.Data![thisOffset + _ndIdxSy] = hy; // ndSy
+                        toProcessList.Data![thisOffset + _ndIdxIndex] = TNum.CreateTruncating(fc); // ndIndex
+                        toProcessList.Data![thisOffset + _ndIdxDepth] = TNum.CreateTruncating(ndDepth + 1); // ndDepth
                         //toProcessList.PushBack(processItem);
                         //toProcessList.PushBack(stackalloc[] { l, t, hx, hy, fc + 0, ndDepth + 1 });
                     }
@@ -574,12 +571,12 @@ public class DoubleQuadTree3<T> : IDisposable
                     if (bounds[_eltIdxRgt] > mx)
                     {
                         var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = r; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = t; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 1; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
+                        toProcessList.Data![thisOffset + _ndIdxMx] = r; // ndMx
+                        toProcessList.Data![thisOffset + _ndIdxMy] = t; // ndMy
+                        toProcessList.Data![thisOffset + _ndIdxSx] = hx; // ndSx
+                        toProcessList.Data![thisOffset + _ndIdxSy] = hy; // ndSy
+                        toProcessList.Data![thisOffset + _ndIdxIndex] = TNum.CreateTruncating(fc + 1); // ndIndex
+                        toProcessList.Data![thisOffset + _ndIdxDepth] = TNum.CreateTruncating(ndDepth + 1); // ndDepth
                     }
                 }
 
@@ -589,23 +586,23 @@ public class DoubleQuadTree3<T> : IDisposable
                     if (bounds[_eltIdxLft] <= mx)
                     {
                         var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = l; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = b; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 2; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
+                        toProcessList.Data![thisOffset + _ndIdxMx] = l; // ndMx
+                        toProcessList.Data![thisOffset + _ndIdxMy] = b; // ndMy
+                        toProcessList.Data![thisOffset + _ndIdxSx] = hx; // ndSx
+                        toProcessList.Data![thisOffset + _ndIdxSy] = hy; // ndSy
+                        toProcessList.Data![thisOffset + _ndIdxIndex] = TNum.CreateTruncating(fc + 2); // ndIndex
+                        toProcessList.Data![thisOffset + _ndIdxDepth] = TNum.CreateTruncating(ndDepth + 1); // ndDepth
                     }
 
                     if (bounds[_eltIdxRgt] > mx)
                     {
                         var thisOffset = offset++ * 6;
-                        toProcessListData[thisOffset + _ndIdxMx] = r; // ndMx
-                        toProcessListData[thisOffset + _ndIdxMy] = b; // ndMy
-                        toProcessListData[thisOffset + _ndIdxSx] = hx; // ndSx
-                        toProcessListData[thisOffset + _ndIdxSy] = hy; // ndSy
-                        toProcessListData[thisOffset + _ndIdxIndex] = fc + 3; // ndIndex
-                        toProcessListData[thisOffset + _ndIdxDepth] = ndDepth + 1; // ndDepth
+                        toProcessList.Data![thisOffset + _ndIdxMx] = r; // ndMx
+                        toProcessList.Data![thisOffset + _ndIdxMy] = b; // ndMy
+                        toProcessList.Data![thisOffset + _ndIdxSx] = hx; // ndSx
+                        toProcessList.Data![thisOffset + _ndIdxSy] = hy; // ndSy
+                        toProcessList.Data![thisOffset + _ndIdxIndex] = TNum.CreateTruncating(fc + 3); // ndIndex
+                        toProcessList.Data![thisOffset + _ndIdxDepth] = TNum.CreateTruncating(ndDepth + 1); // ndDepth
                     }
                 }
 
@@ -618,7 +615,7 @@ public class DoubleQuadTree3<T> : IDisposable
         return leaves;
     }
 
-
+    /*
     private DoubleList.Cache.Item find_leaves2(
         ReadOnlySpan<double> data,
         ReadOnlySpan<double> bounds)
@@ -828,9 +825,9 @@ public class DoubleQuadTree3<T> : IDisposable
         toProcess.Return();
 
         return leaves;
-    }
+    }*/
 
-    private void node_insert(ReadOnlySpan<double> data, ReadOnlySpan<double> elementBounds, int elementId)
+    private void node_insert(ReadOnlySpan<TNum> data, ReadOnlySpan<TNum> elementBounds, int elementId)
     {
         var leaves = find_leaves(data, elementBounds);
 
@@ -840,10 +837,10 @@ public class DoubleQuadTree3<T> : IDisposable
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<double> data)
+    private void leaf_insert(int element, ReadOnlySpan<TNum> data)
     {
-        var node = (int)data[_ndIdxIndex];
-        var depth = (int)data[_ndIdxDepth];
+        var node = int.CreateTruncating(data[_ndIdxIndex]);
+        var depth = int.CreateTruncating(data[_ndIdxDepth]);
 
         // Insert the element node to the leaf.
         int ndFc = _nodes.Get(node, _nodeIdxFc);
@@ -856,7 +853,7 @@ public class DoubleQuadTree3<T> : IDisposable
         if (_nodes.Get(node, _nodeIdxNum) == _maxElements && depth < _maxDepth)
         {
             // Transfer elements from the leaf node to a list of elements.
-            IntList elements = new IntList(1);
+            IntList elts = new IntList(1);
             while (_nodes.Get(node, _nodeIdxFc) != -1)
             {
                 int index = _nodes.Get(node, _nodeIdxFc);
@@ -868,18 +865,18 @@ public class DoubleQuadTree3<T> : IDisposable
                 _eleNodes.Erase(index);
 
                 // Insert element to the list.
-                elements.Set(elements.PushBack(), 0, elt);
+                elts.Set(elts.PushBack(), 0, elt);
             }
 
             // Start by allocating 4 child nodes.
             int fc = _nodes.PushBackCount(_defaultNode4Values, 4);
             _nodes.Set(node, _nodeIdxFc, fc);
-            
+
             // Transfer the elements in the former leaf node to its new children.
             _nodes.Set(node, _nodeIdxNum, -1);
-            for (int j = 0; j < elements.InternalCount; ++j)
+            for (int j = 0; j < elts.InternalCount; ++j)
             {
-                var id = elements.GetInt(j, 0);
+                var id = elts.GetInt(j, 0);
                 node_insert(data, _eleBounds.Get(id, 0, 4), id);
             }
         }

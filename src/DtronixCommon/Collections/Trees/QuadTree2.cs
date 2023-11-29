@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Reflection;
-using static DtronixCommon.Collections.Lists.DoubleList2;
+using static DtronixCommon.Collections.Lists.DoubleStructList;
 
 namespace DtronixCommon.Collections.Trees;
 public class DoubleQuadTree2<T> : IDisposable
@@ -39,7 +39,7 @@ public class DoubleQuadTree2<T> : IDisposable
     const int _eleBoundsItems = 4;
 
     // Stores all the elements in the quadtree.
-    private readonly DoubleList2 _eleBounds;
+    private readonly DoubleStructList _eleBounds;
 
     // ----------------------------------------------------------------------------------------
     // Node fields:
@@ -90,9 +90,9 @@ public class DoubleQuadTree2<T> : IDisposable
 
     private T[]? items;
 
-    private readonly DoubleList2.ValType[] _rootNode;
+    private readonly DoubleStructList.ValType[] _rootNode;
 
-    private readonly DoubleList2.Cache _listCache = new DoubleList2.Cache(_ndNum);
+    private readonly DoubleStructList.Cache _listCache = new DoubleStructList.Cache(_ndNum);
 
     private static readonly Action<T, int> _quadTreeIdSetter;
     /// <summary>
@@ -119,7 +119,7 @@ public class DoubleQuadTree2<T> : IDisposable
 
         _eleNodes = new IntList(2, 2 * initialCapacity);
         _nodes = new IntList(2, 2 * initialCapacity);
-        _eleBounds = new DoubleList2(_eleBoundsItems, _eleBoundsItems * initialCapacity);
+        _eleBounds = new DoubleStructList(_eleBoundsItems, _eleBoundsItems * initialCapacity);
         items = new T[initialCapacity];
 
         // Insert the root node to the qt.
@@ -128,7 +128,7 @@ public class DoubleQuadTree2<T> : IDisposable
         _nodes.Set(0, _nodeIdxNum, 0);
 
         // Set the extents of the root node.
-        _rootNode = new DoubleList2.ValType[]
+        _rootNode = new DoubleStructList.ValType[]
         {
             width / 2, // _ndIdxMx
             height / 2, // _ndIdxMy
@@ -173,7 +173,7 @@ public class DoubleQuadTree2<T> : IDisposable
         if (element.QuadTreeId != -1)
             return -1;
 
-        ReadOnlySpan<DoubleList2.ValType> bounds = stackalloc DoubleList2.ValType[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
         // Insert a new element.                   
         var newElement = _eleBounds.Insert(bounds);
 
@@ -183,7 +183,7 @@ public class DoubleQuadTree2<T> : IDisposable
         items[newElement] = element;
 
         // Insert the element to the appropriate leaf node(s).
-        node_insert(new ReadOnlySpan<DoubleList2.ValType>(_rootNode), bounds, newElement);
+        node_insert(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds, newElement);
         _quadTreeIdSetter(element, newElement);
         return newElement;
     }
@@ -197,7 +197,7 @@ public class DoubleQuadTree2<T> : IDisposable
         var id = element.QuadTreeId;
         // Find the leaves.
         var leaves = find_leaves(
-            new ReadOnlySpan<DoubleList2.ValType>(_rootNode),
+            new ReadOnlySpan<DoubleStructList.ValType>(_rootNode),
             _eleBounds.Get(id, 0, 4));
 
         int nodeIndex;
@@ -311,10 +311,10 @@ public class DoubleQuadTree2<T> : IDisposable
         double y2)
     {
         var listOut = new List<T>();
-        ReadOnlySpan<DoubleList2.ValType> bounds = stackalloc DoubleList2.ValType[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<DoubleList2.ValType>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -371,10 +371,10 @@ public class DoubleQuadTree2<T> : IDisposable
       Func<T, bool> callback)
     {
         var intListOut = new IntList(1);
-        ReadOnlySpan<DoubleList2.ValType> bounds = stackalloc DoubleList2.ValType[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
 
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<DoubleList2.ValType>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         if (_tempSize < _eleBounds.InternalCount)
         {
@@ -436,9 +436,9 @@ public class DoubleQuadTree2<T> : IDisposable
         double y2,
         Func<T, bool> callback)
     {
-        ReadOnlySpan<DoubleList2.ValType> bounds = stackalloc DoubleList2.ValType[] { x1, y1, x2, y2 };
+        ReadOnlySpan<DoubleStructList.ValType> bounds = stackalloc DoubleStructList.ValType[] { x1, y1, x2, y2 };
         // Find the leaves that intersect the specified query rectangle.
-        var leaves = find_leaves(new ReadOnlySpan<DoubleList2.ValType>(_rootNode), bounds);
+        var leaves = find_leaves(new ReadOnlySpan<DoubleStructList.ValType>(_rootNode), bounds);
 
         bool cancel = false;
         int ndIndex;
@@ -491,8 +491,8 @@ public class DoubleQuadTree2<T> : IDisposable
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool Intersect(
-        ReadOnlySpan<DoubleList2.ValType> b1,
-        ReadOnlySpan<DoubleList2.ValType> b2)
+        ReadOnlySpan<DoubleStructList.ValType> b1,
+        ReadOnlySpan<DoubleStructList.ValType> b2)
     {
         return b2[_eltIdxLft].Value <= b1[_eltIdxRgt].Value
                && b2[_eltIdxRgt].Value >= b1[_eltIdxLft].Value
@@ -502,13 +502,13 @@ public class DoubleQuadTree2<T> : IDisposable
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void PushNode(DoubleList2 nodes, int ndIndex, int ndDepth, double ndMx, double ndMy, double ndSx, double ndSy)
+    private static void PushNode(DoubleStructList nodes, int ndIndex, int ndDepth, double ndMx, double ndMy, double ndSx, double ndSy)
     {
         nodes.PushBack(stackalloc ValType[] { ndMx, ndMy, ndSx, ndSy, ndIndex, ndDepth });
     }
-    private DoubleList2.Cache.Item find_leaves(
-        ReadOnlySpan<DoubleList2.ValType> data,
-        ReadOnlySpan<DoubleList2.ValType> bounds)
+    private DoubleStructList.Cache.Item find_leaves(
+        ReadOnlySpan<DoubleStructList.ValType> data,
+        ReadOnlySpan<DoubleStructList.ValType> bounds)
     {
         var leaves = _listCache.Get();
         var toProcess = _listCache.Get();
@@ -563,7 +563,7 @@ public class DoubleQuadTree2<T> : IDisposable
         return leaves;
     }
 
-    private void node_insert(ReadOnlySpan<DoubleList2.ValType> data, ReadOnlySpan<DoubleList2.ValType> elementBounds, int elementId)
+    private void node_insert(ReadOnlySpan<DoubleStructList.ValType> data, ReadOnlySpan<DoubleStructList.ValType> elementBounds, int elementId)
     {
         var leaves = find_leaves(data, elementBounds);
 
@@ -573,7 +573,7 @@ public class DoubleQuadTree2<T> : IDisposable
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<DoubleList2.ValType> data)
+    private void leaf_insert(int element, ReadOnlySpan<DoubleStructList.ValType> data)
     {
         var node = data[_ndIdxIndex].IntValue;
         var depth = data[_ndIdxDepth].IntValue;

@@ -1,41 +1,21 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace DtronixCommon.Collections.Lists;
-
 /// <summary>
-/// List of double with varying size with a backing array.  Items erased are returned to be reused.
+/// List of TNum with varying size with a backing array.  Items erased are returned to be reused.
 /// </summary>
 /// <remarks>https://stackoverflow.com/a/48354356</remarks>
-public class DoubleList2 : IDisposable
+public class GenericNumberList<TNum> : IDisposable
+    where TNum : unmanaged, INumber<TNum>
 {
-    [StructLayout(LayoutKind.Explicit)]
-    public struct ValType
-    {
-        [FieldOffset(0)] // 1 byte
-        public double Value;
-        [FieldOffset(0)] // 4 bytes
-        public int IntValue;
-
-        public static implicit operator ValType(double d) => new ValType() { Value = d };
-        public static implicit operator ValType(int d) => new ValType() { IntValue = d };
-
-        public override string ToString()
-        {
-            return $"Value: {Value}; Int: {IntValue}";
-        }
-    }
-
-
     public class Cache
     {
         private ConcurrentQueue<Item> _cachedLists = new ConcurrentQueue<Item>();
@@ -44,10 +24,10 @@ public class DoubleList2 : IDisposable
         public class Item
         {
             public readonly long ExpireTime;
-            public readonly DoubleList2 List;
+            public readonly GenericNumberList<TNum> List;
             private readonly ConcurrentQueue<Item> _returnQueue;
 
-            public Item(DoubleList2 list, ConcurrentQueue<Item> queue)
+            public Item(GenericNumberList<TNum> list, ConcurrentQueue<Item> queue)
             {
                 List = list;
                 _returnQueue = queue;
@@ -70,7 +50,7 @@ public class DoubleList2 : IDisposable
         {
             if (!_cachedLists.TryDequeue(out var list))
             {
-                return new Item(new DoubleList2(_fieldCount), _cachedLists);
+                return new Item(new GenericNumberList<TNum>(_fieldCount), _cachedLists);
             }
 
             return list;
@@ -80,7 +60,7 @@ public class DoubleList2 : IDisposable
     /// <summary>
     /// Contains the data.
     /// </summary>
-    private ValType[]? _data;
+    public TNum[]? Data;
 
     /// <summary>
     /// Number of fields which are used in the list.  This number is multuplied 
@@ -108,7 +88,7 @@ public class DoubleList2 : IDisposable
     /// Capacity starts starts at 128.
     /// </summary>
     /// <param name="fieldCount">Number of fields </param>
-    public DoubleList2(int fieldCount)
+    public GenericNumberList(int fieldCount)
         : this(fieldCount, 128)
     {
     }
@@ -119,10 +99,10 @@ public class DoubleList2 : IDisposable
     /// </summary>
     /// <param name="fieldCount"></param>
     /// <param name="capacity">Number of total elements this collection supports.  This ignores fieldCount.</param>
-    public DoubleList2(int fieldCount, int capacity)
+    public GenericNumberList(int fieldCount, int capacity)
     {
         _numFields = fieldCount;
-        _data = new ValType[capacity];
+        Data = new TNum[capacity];
     }
 
     /// <summary>
@@ -132,10 +112,10 @@ public class DoubleList2 : IDisposable
     /// <param name="field"></param>
     /// <returns></returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public double Get(int index, int field)
+    public TNum Get(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        return _data![index * _numFields + field].Value;
+        return Data![index * _numFields + field];
     }
 
     /// <summary>
@@ -149,28 +129,9 @@ public class DoubleList2 : IDisposable
     /// of the max and min ranges for fields.</param>
     /// <returns>Span of data for the range</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ReadOnlySpan<ValType> Get(int index, int fieldStart, int fieldCount)
+    public ReadOnlySpan<TNum> Get(int index, int fieldStart, int fieldCount)
     {
-        return new ReadOnlySpan<ValType>(_data, index * _numFields + fieldStart, fieldCount);
-
-       ref var type = ref Get2(index, fieldStart);
-
-    }
-
-    public ref ValType Get2(int index, int fieldStart)
-    {
-        return ref Unsafe.AddByteOffset(ref _data![0], new IntPtr((index * _numFields + fieldStart * 8)));
-    }
-
-    /// <summary>
-    /// Returns an integer from the currently passed field.
-    /// </summary>
-    /// <param name="index">index of the element to retrieve</param>
-    /// <param name="field">Field of the element to retrieve.</param>
-    /// <returns>Interger of the specified element field.</returns>
-    public int GetInt(int index, int field)
-    {
-        return _data![index * _numFields + field].IntValue;
+        return new ReadOnlySpan<TNum>(Data, index * _numFields + fieldStart, fieldCount);
     }
 
     /// <summary>
@@ -179,10 +140,10 @@ public class DoubleList2 : IDisposable
     /// <param name="index"></param>
     /// <param name="field"></param>
     /// <param name="value"></param>
-    public void Set(int index, int field, double value)
+    public void Set(int index, int field, TNum value)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field].Value = value;
+        Data![index * _numFields + field] = value;
     }
 
     /// <summary>
@@ -204,15 +165,15 @@ public class DoubleList2 : IDisposable
 
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new ValType[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            var newArray = new TNum[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
 
         return InternalCount++;
@@ -222,23 +183,24 @@ public class DoubleList2 : IDisposable
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBack(ReadOnlySpan<ValType> values)
+    public int PushBack(ReadOnlySpan<TNum> values)
     {
         int newPos = (InternalCount + 1) * _numFields;
+
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new ValType[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            var newArray = new TNum[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
 
-        values.CopyTo(_data.AsSpan(InternalCount * _numFields));
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
 
         return InternalCount++;
     }
@@ -247,24 +209,55 @@ public class DoubleList2 : IDisposable
     /// Inserts an element to the back of the list and adds the passed values to the data.
     /// </summary>
     /// <returns></returns>
-    public int PushBack(scoped ref ValType values, int count)
+    public int PushBackCount(ReadOnlySpan<TNum> values, int count)
     {
-        int newPos = (InternalCount + 1) * _numFields;
+        int newPos = (InternalCount + count) * _numFields;
+
         // If the list is full, we need to reallocate the buffer to make room
         // for the new element.
-        if (newPos > _data!.Length)
+        if (newPos > Data!.Length)
         {
-            // Use double the size for the new capacity.
+            // Use TNum the size for the new capacity.
             int newCap = newPos * 2;
 
             // Allocate new array and copy former contents.
-            var newArray = new ValType[newCap];
-            Array.Copy(_data, newArray, _data.Length);
-            _data = newArray;
+            var newArray = new TNum[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
         }
-        MemoryMarshal.CreateSpan(ref values, count).CopyTo(_data.AsSpan(InternalCount * _numFields));
 
-        return InternalCount++;
+        values.CopyTo(Data.AsSpan(InternalCount * _numFields));
+
+        var id = InternalCount;
+        InternalCount += count;
+        return id;
+    }
+
+
+    /// <summary>
+    /// Ensures that the list has enough space to accommodate a specified number of additional elements.
+    /// </summary>
+    /// <param name="count">The number of additional elements that the list needs to accommodate.</param>
+    /// <returns>The current count of elements in the list before the operation.</returns>
+    /// <remarks>
+    /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
+    /// </remarks>
+    public void EnsureSpaceAvailable(int count)
+    {
+        int newPos = (InternalCount + count) * _numFields;
+
+        // If the list is full, we need to reallocate the buffer to make room
+        // for the new element.
+        if (newPos > Data!.Length)
+        {
+            // Use TNum the size for the new capacity.
+            int newCap = newPos * 2;
+
+            // Allocate new array and copy former contents.
+            var newArray = new TNum[newCap];
+            Array.Copy(Data, newArray, Data.Length);
+            Data = newArray;
+        }
     }
 
     /// <summary>
@@ -280,13 +273,13 @@ public class DoubleList2 : IDisposable
     public void Increment(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field].IntValue++;
+        Data![index * _numFields + field]++;
     }
 
     public void Decrement(int index, int field)
     {
         Debug.Assert(index >= 0 && index < InternalCount && field >= 0 && field < _numFields);
-        _data![index * _numFields + field].IntValue--;
+        Data![index * _numFields + field]--;
     }
 
     /// <summary>
@@ -302,8 +295,7 @@ public class DoubleList2 : IDisposable
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = _data![pos].IntValue;
-
+            _freeElement = int.CreateTruncating(Data![pos]);
             // Return the free index.
             return index;
         }
@@ -316,7 +308,7 @@ public class DoubleList2 : IDisposable
     /// Inserts an element to a vacant position in the list and returns an index to it.
     /// </summary>
     /// <returns></returns>
-    public int Insert(ReadOnlySpan<ValType> values)
+    public int Insert(ReadOnlySpan<TNum> values)
     {
         // If there's a free index in the free list, pop that and use it.
         if (_freeElement != -1)
@@ -325,10 +317,10 @@ public class DoubleList2 : IDisposable
             int pos = index * _numFields;
 
             // Set the free index to the next free index.
-            _freeElement = _data![pos].IntValue;
+            _freeElement = int.CreateTruncating(Data![pos]);
 
             // Return the free index.
-            values.CopyTo(_data.AsSpan(index * _numFields));
+            values.CopyTo(Data.AsSpan(index * _numFields));
             return index;
         }
 
@@ -344,7 +336,7 @@ public class DoubleList2 : IDisposable
     {
         // Push the element to the free list.
         int pos = index * _numFields;
-        _data![pos].IntValue = _freeElement;
+        Data![pos] = TNum.CreateTruncating(_freeElement);
         _freeElement = index;
     }
 
@@ -353,6 +345,6 @@ public class DoubleList2 : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _data = null;
+        Data = null;
     }
 }

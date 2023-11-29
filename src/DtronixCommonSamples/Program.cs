@@ -31,7 +31,7 @@ namespace DtronixCommonSamples
 
             b.InsertDouble3();
 
-            Console.ReadLine();
+            //Console.ReadLine();
         }
     }
 }
