@@ -10,7 +10,13 @@ namespace DtronixCommon.Tests.Threading.Dispatcher;
 
 public class QueueFireForgetTests
 {
-    private ThreadDispatcher _dispatcher;
+    private ThreadDispatcher? _dispatcher;
+
+    [TearDown]
+    public void TearDown()
+    {
+        _dispatcher?.Dispose();
+    }
 
     [SetUp]
     public void SetUp()

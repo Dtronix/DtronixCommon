@@ -11,7 +11,13 @@ namespace DtronixCommon.Tests.Threading.Dispatcher;
 
 public class QueueTests
 {
-    private ThreadDispatcher _dispatcher;
+    private ThreadDispatcher? _dispatcher;
+
+    [TearDown]
+    public void TearDown()
+    {
+        _dispatcher?.Dispose();
+    }
 
     [SetUp]
     public void SetUp()
@@ -47,12 +53,12 @@ public class QueueTests
         });
 
         task.AssertTimesOut(50);
-        
-        Assert.IsTrue(started);
-        Assert.IsFalse(completed);
+
+        Assert.That(started, Is.True);
+        Assert.That(completed, Is.False);
 
         await task.TestTimeout();
-        Assert.IsTrue(completed);
+        Assert.That(completed, Is.True);
     }
 
     [Test]
@@ -84,19 +90,19 @@ public class QueueTests
     [Test]
     public async Task MessagePump_IsInvokePending_FalseOnEmptyQueue()
     {
-        Assert.IsFalse(_dispatcher.IsInvokePending);
+        Assert.That(_dispatcher.IsInvokePending, Is.False);
         await _dispatcher.Queue(new SimpleMessagePumpAction(() =>
         {
             Thread.Sleep(100);
         })).TestTimeout();
 
-        Assert.IsFalse(_dispatcher.IsInvokePending);
+        Assert.That(_dispatcher.IsInvokePending, Is.False);
     }
 
     [Test]
     public async Task MessagePump_IsInvokePending_TrueOnItemInQueue()
     {
-        Assert.IsFalse(_dispatcher.IsInvokePending);
+        Assert.That(_dispatcher.IsInvokePending, Is.False);
         _ = _dispatcher.Queue(new SimpleMessagePumpAction(() =>
         {
             Thread.Sleep(1000);
@@ -105,13 +111,13 @@ public class QueueTests
         // Delay added to allow the item to queue and start executing.
         await Task.Delay(100);
 
-        Assert.IsFalse(_dispatcher.IsInvokePending);
+        Assert.That(_dispatcher.IsInvokePending, Is.False);
 
         _ = _dispatcher.Queue(new SimpleMessagePumpAction(() =>
         {
         })).TestTimeout();
 
-        Assert.IsTrue(_dispatcher.IsInvokePending);
+        Assert.That(_dispatcher.IsInvokePending, Is.True);
     }
 
     [Test]
@@ -130,10 +136,10 @@ public class QueueTests
                 Thread.Sleep(10000);
             }));
 
-        Assert.IsTrue(fire());
-        Assert.IsTrue(fire());
-        Assert.IsFalse(fire());
-        Assert.GreaterOrEqual(sw.ElapsedMilliseconds, 190);
+        Assert.That(fire(), Is.True);
+        Assert.That(fire(), Is.True);
+        Assert.That(fire(), Is.False);
+        Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(190));
     }
 
     [Test]
@@ -152,9 +158,9 @@ public class QueueTests
             Thread.Sleep(10000);
         }));
 
-        Assert.IsTrue(fire());
+        Assert.That(fire(), Is.True);
         fire();
-        Assert.IsFalse(fire());
-        Assert.LessOrEqual(sw.ElapsedMilliseconds, 500);
+        Assert.That(fire(), Is.False);
+        Assert.That(sw.ElapsedMilliseconds, Is.LessThanOrEqualTo(500));
     }
 }

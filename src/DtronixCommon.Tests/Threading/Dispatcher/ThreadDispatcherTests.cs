@@ -24,7 +24,7 @@ public class ThreadDispatcherTests
             complete = true;
         });
 
-        tasks[1] = dispatcher.Queue(() => { Assert.IsTrue(complete); });
+        tasks[1] = dispatcher.Queue(() => { Assert.That(complete, Is.True); });
         await Task.WhenAll(tasks).TestTimeout();
     }
 
@@ -40,7 +40,7 @@ public class ThreadDispatcherTests
             var i1 = i;
             tasks[i] = dispatcher.Queue(() =>
             {
-                Assert.AreEqual(i1, counter++, "Executed tasks out of order.");
+                Assert.That(counter++, Is.EqualTo(i1), "Executed tasks out of order.");
             });
         }
 
@@ -65,8 +65,8 @@ public class ThreadDispatcherTests
         await Task.Delay(100);
         var task2 = dispatcher.QueueAsync( _ =>
         {
-            Assert.IsTrue(task1Started);
-            Assert.IsFalse(task1Completed);
+            Assert.That(task1Started, Is.True);
+            Assert.That(task1Completed, Is.False);
             return Task.CompletedTask;
         });
 
@@ -82,12 +82,12 @@ public class ThreadDispatcherTests
         var threads = dispatcher.Threads;
 
         foreach (var dispatcherThread in threads)
-            Assert.IsTrue(dispatcherThread.ThreadState.HasFlag(ThreadState.Background));
+            Assert.That(dispatcherThread.ThreadState.HasFlag(ThreadState.Background), Is.True);
 
-        Assert.IsTrue(dispatcher.Stop());
+        Assert.That(dispatcher.Stop(), Is.True);
 
         foreach (var dispatcherThread in threads)
-            Assert.IsFalse(dispatcherThread.IsAlive);
+            Assert.That(dispatcherThread.IsAlive, Is.False);
 
     }
 
@@ -172,7 +172,7 @@ public class ThreadDispatcherTests
         // Dummy action.
         await dispatcher.Queue(() => { });
 
-        Assert.AreEqual(1, wrapperCallCount);
+        Assert.That(wrapperCallCount, Is.EqualTo(1));
     }
 
     [Test]
@@ -187,7 +187,7 @@ public class ThreadDispatcherTests
             dispatcher.QueueFireForget(_ => { Thread.Sleep(250); });
         }
 
-        Assert.IsTrue(dispatcher.Stop(400));
+        Assert.That(dispatcher.Stop(400), Is.True);
     }
 
 
