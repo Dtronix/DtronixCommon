@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using DtronixCommon.Collections;
 using NUnit.Framework;
@@ -9,8 +9,8 @@ public class BufferSequenceTests
 {
     private void VerifySequence(BufferSequence.Range range, int expectedStart, int expectedEnd)
     {
-        Assert.That(range.Start, Is.EqualTo(expectedStart), "Start");
-        Assert.That(range.End, Is.EqualTo(expectedEnd), "End");
+        Assert.AreEqual(expectedStart, range.Start, "Start");
+        Assert.AreEqual(expectedEnd, range.End, "End");
     }
 
     [Test]
@@ -18,12 +18,12 @@ public class BufferSequenceTests
     {
         var bs = new BufferSequence(9);
 
-        Assert.That(bs.Rent(), Is.GreaterThan(-1));
-        Assert.That(bs.Rent(), Is.GreaterThan(-1));
+        Assert.Greater(bs.Rent(), -1);
+        Assert.Greater(bs.Rent(), -1);
 
-        Assert.That(bs.HeadIndex, Is.EqualTo(0));
+        Assert.AreEqual(0, bs.HeadIndex);
         bs.Return(0);
-        Assert.That(bs.HeadIndex, Is.EqualTo(1));
+        Assert.AreEqual(1, bs.HeadIndex);
     }
 
     [Test]
@@ -31,10 +31,10 @@ public class BufferSequenceTests
     {
         var bs = new BufferSequence(9);
         for (int i = 0; i < 10; i++)
-            Assert.That(bs.Rent(), Is.GreaterThan(-1));
+            Assert.Greater(bs.Rent(), -1);
 
         bs.Return(0);
-        Assert.That(bs.Rent(), Is.EqualTo(0));
+        Assert.AreEqual(0, bs.Rent());
     }
 
     [Test]
@@ -42,11 +42,11 @@ public class BufferSequenceTests
     {
         var bs = new BufferSequence(9);
         for (int i = 0; i < 10; i++)
-            Assert.That(bs.Rent(), Is.GreaterThan(-1));
+            Assert.Greater(bs.Rent(), -1);
 
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(9));
+        Assert.AreEqual(9, bs.ConsumedTailIndex);
         bs.Return(9);
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(8));
+        Assert.AreEqual(8, bs.ConsumedTailIndex);
     }
 
     [Test]
@@ -56,7 +56,7 @@ public class BufferSequenceTests
         for (int i = 0; i < 10; i++)
             bs.Rent();
         bs.Return(9);
-        Assert.That(bs.Rent(), Is.EqualTo(9));
+        Assert.AreEqual(9, bs.Rent());
     }
 
     [Test]
@@ -65,15 +65,15 @@ public class BufferSequenceTests
         var bs = new BufferSequence(9);
         var value = bs.Rent();
         var value2 = bs.Rent();
-        Assert.That(value, Is.EqualTo(0));
-        Assert.That(value2, Is.EqualTo(1));
-        Assert.That(bs.Rent(), Is.EqualTo(2));
+        Assert.AreEqual(0, value);
+        Assert.AreEqual(1, value2);
+        Assert.AreEqual(2, bs.Rent());
 
         bs.Return(value);
-        Assert.That(bs.Rent(), Is.EqualTo(0));
+        Assert.AreEqual(0, bs.Rent());
 
         bs.Return(value2);
-        Assert.That(bs.Rent(), Is.EqualTo(1));
+        Assert.AreEqual(1, bs.Rent());
     }
 
     [Test]
@@ -83,7 +83,7 @@ public class BufferSequenceTests
         for (int i = 0; i < 11; i++)
             bs.Rent();
 
-        Assert.That(bs.Rent(), Is.EqualTo(-1));
+        Assert.AreEqual(-1, bs.Rent());
     }
 
     [Test]
@@ -95,7 +95,7 @@ public class BufferSequenceTests
 
         var result = bs.RentedSequences().ToArray();
 
-        Assert.That(result, Has.Length.EqualTo(1));
+        Assert.AreEqual(1, result.Length);
         VerifySequence(result[0], 0, 10);
     }
 
@@ -107,7 +107,7 @@ public class BufferSequenceTests
         for (int i = 0; i < 10; i++)
             items.Add(bs.Rent());
 
-        Assert.That(bs.Rent(), Is.EqualTo(-1));
+        Assert.AreEqual(-1 , bs.Rent());
     }
 
     [Test]
@@ -120,7 +120,7 @@ public class BufferSequenceTests
         bs.Return(0);
         var result = bs.RentedSequences().ToArray();
 
-        Assert.That(result, Has.Length.EqualTo(1));
+        Assert.AreEqual(1, result.Length);
         VerifySequence(result[0], 1, 10);
     }
 
@@ -134,7 +134,7 @@ public class BufferSequenceTests
         bs.Return(9);
         var result = bs.RentedSequences().ToArray();
 
-        Assert.That(result, Has.Length.EqualTo(1));
+        Assert.AreEqual(1, result.Length);
         VerifySequence(result[0], 0, 8);
     }
 
@@ -150,12 +150,12 @@ public class BufferSequenceTests
             bs.Return(i);
             var result = bs.RentedSequences().ToArray();
 
-            Assert.That(result, Has.Length.EqualTo(2));
+            Assert.AreEqual(2, result.Length);
 
             VerifySequence(result[0], 0, i - 1);
 
             VerifySequence(result[1], i + 1, 9);
-            Assert.That(bs.Rent(), Is.EqualTo(i));
+            Assert.AreEqual(i, bs.Rent());
         }
     }
 
@@ -174,7 +174,7 @@ public class BufferSequenceTests
 
         var result = bs.RentedSequences().ToArray();
 
-        Assert.That(result, Has.Length.EqualTo(5));
+        Assert.AreEqual(5, result.Length);
 
         VerifySequence(result[0], 0, 0);
         VerifySequence(result[1], 2, 2);
@@ -188,7 +188,7 @@ public class BufferSequenceTests
     {
         var bs = new BufferSequence(9);
         for (int i = 0; i < 10; i++)
-            Assert.That(bs.Rent(), Is.GreaterThan(-1));
+            Assert.Greater(bs.Rent(), -1);
 
         bs.Return(9);
         bs.Return(3);
@@ -196,11 +196,11 @@ public class BufferSequenceTests
         bs.Return(7);
         bs.Return(5);
 
-        Assert.That(bs.Rent(), Is.EqualTo(1));
-        Assert.That(bs.Rent(), Is.EqualTo(3));
-        Assert.That(bs.Rent(), Is.EqualTo(5));
-        Assert.That(bs.Rent(), Is.EqualTo(7));
-        Assert.That(bs.Rent(), Is.EqualTo(9));
+        Assert.AreEqual(1, bs.Rent());
+        Assert.AreEqual(3, bs.Rent());
+        Assert.AreEqual(5, bs.Rent());
+        Assert.AreEqual(7, bs.Rent());
+        Assert.AreEqual(9, bs.Rent());
     }
 
 
@@ -217,7 +217,7 @@ public class BufferSequenceTests
 
         var result = bs.RentedSequences().ToArray();
 
-        Assert.That(result, Has.Length.EqualTo(2));
+        Assert.AreEqual(2, result.Length);
         VerifySequence(result[0], 0, 3);
         VerifySequence(result[1], 7, 9);
     }
@@ -234,11 +234,11 @@ public class BufferSequenceTests
         bs.Return(7);
         bs.Return(8);
 
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(9));
+        Assert.AreEqual(9, bs.ConsumedTailIndex);
 
         bs.Return(9);
 
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(6));
+        Assert.AreEqual(6, bs.ConsumedTailIndex);
     }
 
     [Test]
@@ -253,11 +253,11 @@ public class BufferSequenceTests
         bs.Return(7);
         bs.Return(8);
 
-        Assert.That(bs.AvailableCount, Is.EqualTo(3));
+        Assert.AreEqual(3, bs.AvailableCount);
 
         bs.Return(9);
 
-        Assert.That(bs.AvailableCount, Is.EqualTo(4));
+        Assert.AreEqual(4, bs.AvailableCount);
     }
 
     [Test]
@@ -265,11 +265,11 @@ public class BufferSequenceTests
     {
         var bs = new BufferSequence(9);
         bs.Rent();
-        Assert.That(bs.HeadIndex, Is.EqualTo(0));
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(0));
+        Assert.AreEqual(0, bs.HeadIndex);
+        Assert.AreEqual(0, bs.ConsumedTailIndex);
         bs.Return(0);
-        Assert.That(bs.Returned.count, Is.EqualTo(0));
-        Assert.That(bs.ConsumedTailIndex, Is.EqualTo(-1));
+        Assert.AreEqual(0, bs.Returned.count);
+        Assert.AreEqual(-1, bs.ConsumedTailIndex);
 
     }
 }

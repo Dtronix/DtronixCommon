@@ -46,7 +46,7 @@ public class DelayedActionTests
         });
 
         await delayedAction.InvokeAsync();
-        Assert.That(await WaitForCompletion(100), Is.True);
+        Assert.IsTrue(await WaitForCompletion(100));
     }
 
 
@@ -59,11 +59,11 @@ public class DelayedActionTests
         });
 
         await delayedAction.InvokeAsync();
-        Assert.That(await WaitForCompletion(100), Is.True);
+        Assert.IsTrue(await WaitForCompletion(100));
 
         _tcs = new TaskCompletionSource();
         await delayedAction.InvokeAsync();
-        Assert.That(await WaitForCompletion(100), Is.True);
+        Assert.IsTrue(await WaitForCompletion(100));
 
     }
 
@@ -87,8 +87,8 @@ public class DelayedActionTests
         });
 
 
-        Assert.That(await WaitForCompletion(1000), Is.True);
-        Assert.That(sw.ElapsedMilliseconds, Is.GreaterThanOrEqualTo(80));
+        Assert.IsTrue(await WaitForCompletion(1000));
+        Assert.GreaterOrEqual(sw.ElapsedMilliseconds, 80);
     }
 
     [Test]
@@ -106,6 +106,6 @@ public class DelayedActionTests
             await delayedAction.InvokeAsync(new ArgsValue(1));
         });
 
-        Assert.That(await WaitForCompletion(150), Is.True);
+        Assert.IsTrue(await WaitForCompletion(150));
     }
 }
