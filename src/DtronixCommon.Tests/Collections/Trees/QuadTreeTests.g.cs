@@ -23,8 +23,8 @@ public class FloatQuadTreeTests : QuadTreeTestBase
         qt.Insert(0, 0, 0, 0, item);
         qt.Insert(0, 0, 0, 0, item2);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
-        Assert.That(item2.QuadTreeId, Is.EqualTo(1));
+        Assert.AreEqual(0, item.QuadTreeId);
+        Assert.AreEqual(1, item2.QuadTreeId);
     }
 
     [Test]
@@ -34,7 +34,7 @@ public class FloatQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(0, 0, 0, 0, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -44,7 +44,7 @@ public class FloatQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(50, 50, 60, 60, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -56,7 +56,7 @@ public class FloatQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-        Assert.That(items.Count, Is.EqualTo(0));
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -75,8 +75,10 @@ public class FloatQuadTreeTests : QuadTreeTestBase
         var items = qt.Query(-1000, -1000, 1000, 1000);
         var items2 = qt.Query(-1000, -1000, 1000, 1000);
 
-        Assert.That(items.Count, Is.EqualTo(100));
-        Assert.That(items2.Count, Is.EqualTo(100));
+        Assert.AreEqual(100, items.Count);
+        Assert.AreEqual(100, items2.Count);
+
+
     }
 }
 
@@ -96,8 +98,8 @@ public class LongQuadTreeTests : QuadTreeTestBase
         qt.Insert(0, 0, 0, 0, item);
         qt.Insert(0, 0, 0, 0, item2);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
-        Assert.That(item2.QuadTreeId, Is.EqualTo(1));
+        Assert.AreEqual(0, item.QuadTreeId);
+        Assert.AreEqual(1, item2.QuadTreeId);
     }
 
     [Test]
@@ -107,7 +109,7 @@ public class LongQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(0, 0, 0, 0, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -117,7 +119,7 @@ public class LongQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(50, 50, 60, 60, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -129,7 +131,7 @@ public class LongQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-        Assert.That(items.Count, Is.EqualTo(0));
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -148,8 +150,10 @@ public class LongQuadTreeTests : QuadTreeTestBase
         var items = qt.Query(-1000, -1000, 1000, 1000);
         var items2 = qt.Query(-1000, -1000, 1000, 1000);
 
-        Assert.That(items.Count, Is.EqualTo(100));
-        Assert.That(items2.Count, Is.EqualTo(100));
+        Assert.AreEqual(100, items.Count);
+        Assert.AreEqual(100, items2.Count);
+
+
     }
 }
 
@@ -169,8 +173,8 @@ public class IntQuadTreeTests : QuadTreeTestBase
         qt.Insert(0, 0, 0, 0, item);
         qt.Insert(0, 0, 0, 0, item2);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
-        Assert.That(item2.QuadTreeId, Is.EqualTo(1));
+        Assert.AreEqual(0, item.QuadTreeId);
+        Assert.AreEqual(1, item2.QuadTreeId);
     }
 
     [Test]
@@ -180,7 +184,7 @@ public class IntQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(0, 0, 0, 0, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -190,7 +194,7 @@ public class IntQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(50, 50, 60, 60, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -202,7 +206,7 @@ public class IntQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-        Assert.That(items.Count, Is.EqualTo(0));
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -221,8 +225,10 @@ public class IntQuadTreeTests : QuadTreeTestBase
         var items = qt.Query(-1000, -1000, 1000, 1000);
         var items2 = qt.Query(-1000, -1000, 1000, 1000);
 
-        Assert.That(items.Count, Is.EqualTo(100));
-        Assert.That(items2.Count, Is.EqualTo(100));
+        Assert.AreEqual(100, items.Count);
+        Assert.AreEqual(100, items2.Count);
+
+
     }
 }
 
@@ -242,8 +248,8 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
         qt.Insert(0, 0, 0, 0, item);
         qt.Insert(0, 0, 0, 0, item2);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
-        Assert.That(item2.QuadTreeId, Is.EqualTo(1));
+        Assert.AreEqual(0, item.QuadTreeId);
+        Assert.AreEqual(1, item2.QuadTreeId);
     }
 
     [Test]
@@ -253,7 +259,7 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(0, 0, 0, 0, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -263,7 +269,7 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
         var item = new TestQuadTreeItem();
         qt.Insert(50, 50, 60, 60, item);
 
-        Assert.That(item.QuadTreeId, Is.EqualTo(0));
+        Assert.AreEqual(0, item.QuadTreeId);
     }
 
     [Test]
@@ -275,7 +281,7 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
 
         var items = qt.Query(0, 0, 5, 5);
 
-        Assert.That(items.Count, Is.EqualTo(0));
+        Assert.AreEqual(0, items.Count);
     }
 
     [Test]
@@ -294,8 +300,10 @@ public class DoubleQuadTreeTests : QuadTreeTestBase
         var items = qt.Query(-1000, -1000, 1000, 1000);
         var items2 = qt.Query(-1000, -1000, 1000, 1000);
 
-        Assert.That(items.Count, Is.EqualTo(100));
-        Assert.That(items2.Count, Is.EqualTo(100));
+        Assert.AreEqual(100, items.Count);
+        Assert.AreEqual(100, items2.Count);
+
+
     }
 }
 

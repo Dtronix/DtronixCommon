@@ -31,11 +31,11 @@ public class ReusableTaskCompletionTests
             manualReset.TrySetCanceled();
             manualReset.Reset();
         });
-        Assert.That(await manualReset.Awaiter, Is.True);
+        Assert.IsTrue(await manualReset.Awaiter);
 
         // Spin while the task resets.
         await Task.Delay(1);
-        Assert.That(await manualReset.Awaiter, Is.False);
+        Assert.IsFalse(await manualReset.Awaiter);
 
         // Spin while the task resets.
         await Task.Delay(1);
@@ -78,12 +78,12 @@ public class ReusableTaskCompletionTests
             manualReset.Reset();
         });
         await manualReset.Awaiter;
-        Assert.That(setResult1, Is.True);
+        Assert.IsTrue(setResult1);
 
         // Spin while the task resets.
         await Task.Delay(1);
         await manualReset.Awaiter;
-        Assert.That(setResult2, Is.True);
+        Assert.IsTrue(setResult2);
 
         // Spin while the task resets.
         await Task.Delay(1);

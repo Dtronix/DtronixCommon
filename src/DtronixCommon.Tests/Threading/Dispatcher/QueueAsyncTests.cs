@@ -8,13 +8,7 @@ using NUnit.Framework;
 namespace DtronixCommon.Tests.Threading.Dispatcher;
 public class QueueAsyncTests
 {
-    private ThreadDispatcher? _dispatcher;
-
-    [TearDown]
-    public void TearDown()
-    {
-        _dispatcher?.Dispose();
-    }
+    private ThreadDispatcher _dispatcher;
 
     [SetUp]
     public void SetUp()

@@ -9,13 +9,7 @@ namespace DtronixCommon.Tests.Threading.Dispatcher;
 
 public class QueueResultAsyncTests
 {
-    private ThreadDispatcher? _dispatcher;
-
-    [TearDown]
-    public void TearDown()
-    {
-        _dispatcher?.Dispose();
-    }
+    private ThreadDispatcher _dispatcher;
 
     [SetUp]
     public void SetUp()
@@ -30,7 +24,7 @@ public class QueueResultAsyncTests
     {
         var task = _dispatcher.QueueResultAsync(_ => Task.FromResult(true));
 
-        Assert.That(await task.TestTimeout(), Is.True);
+        Assert.IsTrue(await task.TestTimeout());
     }
 
     [Test]
@@ -42,7 +36,7 @@ public class QueueResultAsyncTests
             return true;
         });
 
-        Assert.That(await task.TestTimeout(), Is.True);
+        Assert.IsTrue(await task.TestTimeout());
     }
 
     [Test]
