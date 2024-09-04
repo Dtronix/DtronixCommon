@@ -16,13 +16,13 @@ jobs:
                              
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: true
 
     - name: Install .NET
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.*
         source-url: https://api.nuget.org/v3/index.json
@@ -42,7 +42,7 @@ jobs:
       run: dotnet test src/DtronixCommon.Tests -c Release
       
     - name: Export artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         path: artifacts/*.nupkg
         
@@ -52,7 +52,7 @@ jobs:
       id: tagName
 
     - name: Create release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: "DtronixCommon ${{ steps.tagName.outputs.tag }} Released"
