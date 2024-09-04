@@ -1,0 +1,38 @@
+<Project>
+  <ItemGroup>
+    <PackageReference Include="Mono.TextTemplating" Version="3.0.0" PrivateAssets="All" />
+    <TextTemplate Include="**\*.tt" />
+    <Generated Include="**\*.g.cs" />
+  </ItemGroup>
+  <Target Name="TextTemplateTransform" BeforeTargets="BeforeBuild" Inputs="@(TextTemplate)" Outputs="@(TextTemplate->'%(RelativeDir)%(Filename).cs')">
+    <!-- 
+        This is a crude hack to make Mono's T4 generator work at least somewhat sensibly
+        when working with include files or relative paths. Microsoft's T4 used MSBuild
+        syntax $(X) to reference environment variables, whilst Mono's version uses Environment
+        variable syntax (%x%). 
+
+        dotnet <tool> is also sensitive to the current working directory with local tools 
+        and cannot be used when the working directory changes.
+        -->
+    <Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 -v %(TextTemplate.Identity) -o %(TextTemplate.RelativeDir)%(TextTemplate.Filename).cs -I=%(TextTemplate.RelativeDir)" EnvironmentVariables="ProjectDir=$(ProjectDir)" />
+
+    <!--
+        The generator may have added new files that are not included in the list of compiled items.
+        Those files would not be compiled in the same run that generated the files. So we have to
+        add them to the compile collection manually after the fact. 
+        
+        But adding files that had been added already also triggers an error (DuplicateItems) and
+        thus we have to first remove them before adding them again. Remove does nothing if the 
+        item is not in the collection, and adding them afterwards ensures there is only one left.
+       -->
+    <ItemGroup>
+      <Compile Remove="%(TextTemplate.RelativeDir)%(TextTemplate.Filename).g.cs" />
+      <Compile Include="%(TextTemplate.RelativeDir)%(TextTemplate.Filename).g.cs" />
+      <FileWrites Include="%(TextTemplate.RelativeDir)%(TextTemplate.Filename).g.cs" />
+      <!-- For clean to work properly -->
+    </ItemGroup>
+  </Target>
+  <Target Name="TextTemplateClean" AfterTargets="Clean">
+    <Delete Files="@(Generated)" />
+  </Target>
+</Project>

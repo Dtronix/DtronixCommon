@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
+  <Import Project="..\t4.props" />
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -20,13 +20,5 @@
   <ItemGroup>
     <ProjectReference Include="..\DtronixCommon\DtronixCommon.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Mono.TextTemplating" Version="2.3.1" />
-    <TextTemplate Include="**\*.tt" />
-    <Generated Include="**\*.g.cs" />
-  </ItemGroup>
-  <Target Name="TextTemplateTransform" BeforeTargets="BeforeBuild">
-    <Exec WorkingDirectory="$(ProjectDir)" Command="dotnet t4 %(TextTemplate.Identity)" />
-  </Target>
 
 </Project>
