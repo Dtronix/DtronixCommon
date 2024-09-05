@@ -253,7 +253,7 @@ public class FloatList : IDisposable
     /// <remarks>
     /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
     /// </remarks>
-    public void EnsureSpaceAvailable(int count)
+    public bool EnsureSpaceAvailable(int count)
     {
         int newPos = (InternalCount + count) * _numFields;
 
@@ -268,7 +268,9 @@ public class FloatList : IDisposable
             var newArray = new float[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
+            return true;
         }
+        return false;
     }
 
     /// <summary>
@@ -604,7 +606,7 @@ public class DoubleList : IDisposable
     /// <remarks>
     /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
     /// </remarks>
-    public void EnsureSpaceAvailable(int count)
+    public bool EnsureSpaceAvailable(int count)
     {
         int newPos = (InternalCount + count) * _numFields;
 
@@ -619,7 +621,9 @@ public class DoubleList : IDisposable
             var newArray = new double[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
+            return true;
         }
+        return false;
     }
 
     /// <summary>
@@ -955,7 +959,7 @@ public class IntList : IDisposable
     /// <remarks>
     /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
     /// </remarks>
-    public void EnsureSpaceAvailable(int count)
+    public bool EnsureSpaceAvailable(int count)
     {
         int newPos = (InternalCount + count) * _numFields;
 
@@ -970,7 +974,9 @@ public class IntList : IDisposable
             var newArray = new int[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
+            return true;
         }
+        return false;
     }
 
     /// <summary>
@@ -1306,7 +1312,7 @@ public class LongList : IDisposable
     /// <remarks>
     /// If the list does not have enough space, it reallocates the buffer, doubling its size, to make room for the new elements.
     /// </remarks>
-    public void EnsureSpaceAvailable(int count)
+    public bool EnsureSpaceAvailable(int count)
     {
         int newPos = (InternalCount + count) * _numFields;
 
@@ -1321,7 +1327,9 @@ public class LongList : IDisposable
             var newArray = new long[newCap];
             Array.Copy(Data, newArray, Data.Length);
             Data = newArray;
+            return true;
         }
+        return false;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.Intrinsics;
 using BenchmarkDotNet.Attributes;
 using DtronixCommon.Collections.Lists;
 using DtronixCommon.Collections.Trees;
@@ -13,6 +14,8 @@ public class QuadTreeBenchmarks
     private DoubleQuadTree<Item> _quadTreeD;
     private FloatQuadTree<Item> _quadTreeFFull;
     private DoubleQuadTree<Item> _quadTreeDFull;
+    private VectorFloatQuadTree<Item> _quadTreeVF;
+    private VectorFloatQuadTree<Item> _quadTreeVFFull;
 
     private class Item : IQuadTreeItem
     {
@@ -26,7 +29,9 @@ public class QuadTreeBenchmarks
         var offsetY = 5;
         _quadTreeD = new DoubleQuadTree<Item>(10000, 10000, 8, 8, 200);
         _quadTreeF = new FloatQuadTree<Item>(10000, 10000, 8, 8, 200);
+        _quadTreeVF = new VectorFloatQuadTree<Item>(10000, 10000, 8, 8, 200);
         _quadTreeFFull = new FloatQuadTree<Item>(10000, 10000, 8, 8, 1024);
+        _quadTreeVFFull = new VectorFloatQuadTree<Item>(10000, 10000, 8, 8, 1024);
         _quadTreeDFull = new DoubleQuadTree<Item>(10000, 10000, 8, 8, 1024);
 
         for (int x = 0; x < 50; x++)
@@ -40,7 +45,19 @@ public class QuadTreeBenchmarks
                     y + offsetY + offsetY * y, new Item());
             }
         }
-        
+
+        for (int x = 0; x < 50; x++)
+        {
+            for (int y = 0; y < 50; y++)
+            {
+                _quadTreeVFFull.Insert(Vector128.Create(
+                    (float)(x - offsetX + offsetX * x),
+                    y - offsetY + offsetY * y,
+                    x + offsetX + offsetX * x,
+                    y + offsetY + offsetY * y), new Item());
+            }
+        }
+
         for (int x = 0; x < 50; x++)
         {
             for (int y = 0; y < 50; y++)
@@ -76,6 +93,27 @@ public class QuadTreeBenchmarks
     }
 
     [Benchmark]
+    public void InsertFloatVector()
+    {
+
+        var offsetX = 5;
+        var offsetY = 5;
+
+        for (int x = 0; x < 10; x++)
+        {
+            for (int y = 0; y < 10; y++)
+            {
+                _quadTreeVF.Insert(Vector128.Create(
+                    (float)(x - offsetX + offsetX * x),
+                    y - offsetY + offsetY * y,
+                    x + offsetX + offsetX * x,
+                    y + offsetY + offsetY * y), new Item());
+            }
+        }
+        _quadTreeVF.Clear();
+    }
+
+    [Benchmark]
     public void InsertDouble()
     {
 
@@ -102,6 +140,14 @@ public class QuadTreeBenchmarks
     {
         _quadTreeFFull.Walk(-5000, -5000, 5000, 5000, item => true);
     }
+
+
+    [Benchmark]
+    public void WalkVFloat()
+    {
+        _quadTreeVFFull.Walk(Vector128.Create(-5000, -5000, 5000, 5000f), item => true);
+    }
+
 
     [Benchmark]
     public void WalkDouble()

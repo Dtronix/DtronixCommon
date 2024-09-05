@@ -1,4 +1,6 @@
-﻿using BenchmarkDotNet.Running;
+﻿using System;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Running;
 using DtronixCommonBenchmarks.Collections.Lists;
 using DtronixCommonBenchmarks.Collections.Trees;
 using DtronixCommonBenchmarks.Reflection;
@@ -9,7 +11,9 @@ namespace DtronixCommonBenchmarks
     {
         public static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<QuadTreeBenchmarks>();
+            var config = DefaultConfig.Instance;
+            var summary = BenchmarkRunner.Run<QuadTreeBenchmarks>(config, args);
+            Console.ReadLine();
         }
     }
 }

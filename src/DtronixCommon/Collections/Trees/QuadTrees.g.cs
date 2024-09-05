@@ -621,12 +621,12 @@ public class FloatQuadTree<T> : IDisposable
         var leaves = FindLeaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
-            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+            LeafInsert(elementId, leaves.List.Get(j, 0, 6));
 
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<float> data)
+    private void LeafInsert(int element, ReadOnlySpan<float> data)
     {
         var node = (int)data[_ndIdxIndex];
         var depth = (int)data[_ndIdxDepth];
@@ -1306,12 +1306,12 @@ public class LongQuadTree<T> : IDisposable
         var leaves = FindLeaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
-            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+            LeafInsert(elementId, leaves.List.Get(j, 0, 6));
 
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<long> data)
+    private void LeafInsert(int element, ReadOnlySpan<long> data)
     {
         var node = (int)data[_ndIdxIndex];
         var depth = (int)data[_ndIdxDepth];
@@ -1991,12 +1991,12 @@ public class IntQuadTree<T> : IDisposable
         var leaves = FindLeaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
-            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+            LeafInsert(elementId, leaves.List.Get(j, 0, 6));
 
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<int> data)
+    private void LeafInsert(int element, ReadOnlySpan<int> data)
     {
         var node = (int)data[_ndIdxIndex];
         var depth = (int)data[_ndIdxDepth];
@@ -2676,12 +2676,12 @@ public class DoubleQuadTree<T> : IDisposable
         var leaves = FindLeaves(data, elementBounds);
 
         for (int j = 0; j < leaves.List.InternalCount; ++j)
-            leaf_insert(elementId, leaves.List.Get(j, 0, 6));
+            LeafInsert(elementId, leaves.List.Get(j, 0, 6));
 
         leaves.Return();
     }
 
-    private void leaf_insert(int element, ReadOnlySpan<double> data)
+    private void LeafInsert(int element, ReadOnlySpan<double> data)
     {
         var node = (int)data[_ndIdxIndex];
         var depth = (int)data[_ndIdxDepth];
